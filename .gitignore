@@ -1,0 +1,9 @@
+# Node
+node_modules/
+dist/
+
+# Env
+.env
+
+# Prisma
+prisma/dev.db
