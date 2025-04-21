@@ -1,0 +1,9 @@
+services:
+  discord-bot:
+    build: .
+    container_name: discord-bot
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data # pour SQLite
+    restart: unless-stopped

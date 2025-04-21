@@ -6,10 +6,23 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./data.db"
+}
+
+model User {
+  id        String @id @default(cuid())
+  discordId String @unique
+  username  String
+  score     Int    @default(0)
+}
+
+model Question {
+  id          Int    @id @default(autoincrement())
+  text        String
+  answer      String
+  description String
 }
