@@ -18,6 +18,9 @@ const commands = [
     .setName("topscore")
     .setDescription("Affiche les meilleurs scores du serveur"),
   new SlashCommandBuilder()
+    .setName("select_quiz_channel")
+    .setDescription("Sélectionne le salon où le quiz sera joué"),
+  new SlashCommandBuilder()
     .setName("add_question")
     .setDescription("Permet d'ajouter une question au quiz")
     .addStringOption((option) =>
