@@ -11,6 +11,4 @@ RUN npm run prisma:deploy
 
 ENV DATABASE_URL="file:./dev.db"
 
-EXPOSE 3000
-
-CMD ["node", "dist/index.js"]
+ENTRYPOINT ["node", "dist/index.js"]
