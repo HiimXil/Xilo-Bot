@@ -1,22 +1,15 @@
-# Étape 1 : build
-FROM node:20-alpine AS builder
+FROM node:lts-alpine3.17
 
-WORKDIR /app
+WORKDIR /usr/src/app
+
+COPY package*.json ./
+RUN npm ci
+
 COPY . .
-
-RUN npm install
 RUN npm run build
 
-# Étape 2 : exécution
-FROM node:20-alpine
+ENV DATABASE_URL="file:./dev.db"
 
-WORKDIR /app
-
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/package.json ./
-COPY --from=builder /app/.env ./
-COPY --from=builder /app/prisma ./prisma
-
-RUN npm install --omit=dev
+EXPOSE 3000
 
 CMD ["node", "dist/index.js"]

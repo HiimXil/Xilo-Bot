@@ -247,10 +247,14 @@ async function checkAnswer(
   // Si l'heure actuelle est entre 21h et 9h, attend jusqu'à 9h
   const now = new Date();
   const currentHour = now.getHours();
+  console.log("Heure actuelle :", currentHour);
   if (currentHour >= 21 || currentHour < 9) {
     const nextQuestionTime = new Date();
     nextQuestionTime.setHours(9, 0, 0, 0);
     const waitTime = nextQuestionTime.getTime() - now.getTime();
+    if (waitTime < 0) {
+      waitTime;
+    }
     console.log("Attendre jusqu'à 9h du matin avant la prochaine question...");
     setTimeout(() => {
       AskQuestion();
