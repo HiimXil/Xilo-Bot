@@ -7,3 +7,7 @@ services:
     volumes:
       - ./data:/app/data # pour SQLite
     restart: unless-stopped
+
+volumes:
+  sqlite:
+    driver: local

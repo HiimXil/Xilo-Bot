@@ -1,4 +1,4 @@
-FROM node:lts-alpine3.17
+FROM node:current-alpine3.21
 
 WORKDIR /usr/src/app
 
@@ -7,6 +7,7 @@ RUN npm ci
 
 COPY . .
 RUN npm run build
+RUN npm run prisma:deploy
 
 ENV DATABASE_URL="file:./dev.db"
 

@@ -1,11 +1,13 @@
 import { Client, GatewayIntentBits, Message } from "discord.js";
 import dotenv from "dotenv";
+import { resolve } from 'path';
 import { PrismaClient } from "@prisma/client";
 import { generateMathQuestion } from "./mathQuestion";
+import { User, Configuration, Question } from "./types";
 
 const prisma = new PrismaClient();
 
-dotenv.config();
+dotenv.config({ path: resolve(__dirname, "../.env") });
 
 const client = new Client({
   intents: [
@@ -64,7 +66,7 @@ client.on("interactionCreate", async (interaction) => {
 
     const topMessage = top
       .map(
-        (user, index) =>
+        (user: User, index: number) =>
           `**${index + 1}.** <@${user.discordId}> — ${user.score} pts`
       )
       .join("\n");
@@ -171,7 +173,7 @@ async function AskQuestion() {
   answered = false;
   console.log("Nouvelle question...");
   // 70%/30% chance question de base ou math
-  if (Math.random() < 0.7) {
+  if (Math.random() < 0.1) {
     console.log("Question de la base de données");
     const count = await prisma.question.count();
     const rand = Math.floor(Math.random() * count);
@@ -195,12 +197,12 @@ async function AskQuestion() {
   currentAnswer = answerText;
 
   // Envoie la question dans le salon
-  await prisma.configuration.findMany().then(async (config) => {
+  await prisma.configuration.findMany().then(async (config: Configuration[]) => {
     if (!config) {
       console.log("Aucun salon configuré pour le quiz.");
       return;
     }
-    config.forEach((conf) => {
+    config.forEach((conf: Configuration) => {
       const channel = client.channels.cache.get(conf.QuizChannelId);
       if (channel && channel.isTextBased() && "send" in channel) {
         channel.send(`❓ **Question** : ${currentQuestion}`);

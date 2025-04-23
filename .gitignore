@@ -7,5 +7,5 @@ dist/
 
 # Prisma
 prisma/dev.db
-prisma/data.db
-prisma/data.db-journal
+prisma/dev.db
+prisma/dev.db-journal
