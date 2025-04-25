@@ -1,9 +1,9 @@
-import { Client, GatewayIntentBits, Message } from "discord.js";
+import { Client, GatewayIntentBits } from "discord.js";
 import dotenv from "dotenv";
-import { resolve } from 'path';
+import { resolve } from "path";
 import { PrismaClient } from "@prisma/client";
-import { generateMathQuestion } from "./mathQuestion";
-import { User, Configuration, Question } from "./types";
+import type { User, Configuration } from "./types";
+import { AskQuestion, validAnswer } from "./quiz";
 
 const prisma = new PrismaClient();
 
@@ -17,14 +17,10 @@ const client = new Client({
   ],
 });
 
-let currentQuestion: string | null = null;
-let currentAnswer: string | null = null;
-let answered = false;
-
 // Demarrage du bot
 client.once("ready", () => {
   console.log(`✅ Bot connecté en tant que ${client.user?.tag}`);
-  AskQuestion();
+  AskQuestion(client);
 });
 
 // Commandes Slash
@@ -152,123 +148,17 @@ client.on("messageCreate", async (message) => {
     return;
   }
 
+  const config: Configuration | null = await prisma.configuration.findFirst({
+    where: { GuildId: message.guild?.id },
+  });
   // Vérifie réponse au quiz
   if (
-    currentAnswer &&
-    message.content.toLowerCase().replace(",", ".") === currentAnswer &&
-    !answered
+    config?.CurrentAnswer &&
+    message.content.toLowerCase().replace(",", ".") === config.CurrentAnswer &&
+    !config?.Answered
   ) {
-    checkAnswer(message, currentAnswer, currentQuestion, answered);
+    validAnswer(message, client);
   }
 });
 
 client.login(process.env.DISCORD_TOKEN);
-
-//Fonction
-
-// Génération de la question + envoie dans le salon
-async function AskQuestion() {
-  let questionText = "";
-  let answerText = "";
-  answered = false;
-  console.log("Nouvelle question...");
-  // 70%/30% chance question de base ou math
-  if (Math.random() < 0.1) {
-    console.log("Question de la base de données");
-    const count = await prisma.question.count();
-    const rand = Math.floor(Math.random() * count);
-    const question = await prisma.question.findFirst({
-      skip: rand,
-    });
-
-    if (!question) return;
-    questionText = question.text;
-    answerText = question.answer.toLowerCase();
-  } else {
-    console.log("Question mathématique");
-    const math = generateMathQuestion();
-    questionText = math.question;
-    answerText = math.answer.toLowerCase();
-  }
-  console.log("Question : ", questionText);
-  console.log("Réponse : ", answerText);
-
-  currentQuestion = questionText;
-  currentAnswer = answerText;
-
-  // Envoie la question dans le salon
-  await prisma.configuration.findMany().then(async (config: Configuration[]) => {
-    if (!config) {
-      console.log("Aucun salon configuré pour le quiz.");
-      return;
-    }
-    config.forEach((conf: Configuration) => {
-      const channel = client.channels.cache.get(conf.QuizChannelId);
-      if (channel && channel.isTextBased() && "send" in channel) {
-        channel.send(`❓ **Question** : ${currentQuestion}`);
-      }
-    });
-  });
-}
-
-// Vérifie la réponse
-async function checkAnswer(
-  message: Message<boolean>,
-  currentAnswer: string | null,
-  currentQuestion: string | null,
-  answered: boolean
-) {
-  answered = true;
-  message.reply(
-    `🎉 Bonne réponse <@${message.author.id}> ! Tu gagnes 1 point.`
-  );
-
-  const discordId = message.author.id;
-  const username = message.author.username;
-
-  await prisma.user.upsert({
-    where: { discordId, guildId: message.guild?.id },
-    update: {
-      score: { increment: 1 },
-      username,
-    },
-    create: {
-      discordId,
-      username,
-      score: 1,
-      guildId: message.guild?.id,
-    },
-  });
-
-  //Réinitialise la question
-  currentQuestion = null;
-  currentAnswer = null;
-  answered = false;
-
-  // Envoie la prochaine question
-  // Si l'heure actuelle est entre 21h et 9h, attend jusqu'à 9h
-  const now = new Date();
-  const currentHour = now.getHours();
-  console.log("Heure actuelle :", currentHour);
-  if (currentHour >= 21 || currentHour < 9) {
-    const nextQuestionTime = new Date();
-    nextQuestionTime.setHours(9, 0, 0, 0);
-    const waitTime = nextQuestionTime.getTime() - now.getTime();
-    if (waitTime < 0) {
-      waitTime;
-    }
-    console.log("Attendre jusqu'à 9h du matin avant la prochaine question...");
-    setTimeout(() => {
-      AskQuestion();
-    }, waitTime);
-    return;
-  }
-  // Sinon, attend entre 1H30 et 1H00
-  const waitTime =
-    Math.floor(Math.random() * (90 * 60 * 1000 - 60 * 60 * 1000 + 1)) +
-    60 * 60 * 1000;
-  console.log("Attendre entre 1h00 et 1h30 avant la prochaine question...");
-  setTimeout(() => {
-    AskQuestion();
-  }, waitTime);
-}

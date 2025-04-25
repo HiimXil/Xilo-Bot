@@ -29,6 +29,9 @@ model Question {
 }
 
 model Configuration {
-  GuildId       String @id
-  QuizChannelId String
+  GuildId         String  @id
+  QuizChannelId   String
+  CurrentQuestion String?
+  CurrentAnswer   String?
+  Answered        Boolean @default(false)
 }
