@@ -5,6 +5,21 @@ dotenv.config();
 
 const commands = [
   new SlashCommandBuilder()
+    .setName("set_score")
+    .setDescription("Initialise le score d'un utilisateur")
+    .addUserOption((option) =>
+      option
+        .setName("utilisateur")
+        .setDescription("L'utilisateur dont tu veux voir le score")
+        .setRequired(true)
+    )
+    .addIntegerOption((option) =>
+      option
+        .setName("score")
+        .setDescription("Le score de l'utilisateur")
+        .setRequired(true)
+    ),
+  new SlashCommandBuilder()
     .setName("score")
     .setDescription("Affiche ton score ou celui d'un autre membre")
     .addUserOption((option) =>

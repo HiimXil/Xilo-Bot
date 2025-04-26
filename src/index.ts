@@ -2,8 +2,8 @@ import { Client, GatewayIntentBits } from "discord.js";
 import dotenv from "dotenv";
 import { resolve } from "path";
 import { PrismaClient } from "@prisma/client";
-import type { User, Configuration } from "./types";
-import { AskQuestion, validAnswer } from "./quiz";
+import type { User, Configuration } from "./Quiz/types";
+import { AskQuestion, validAnswer } from "./Quiz/quiz";
 
 const prisma = new PrismaClient();
 
@@ -134,6 +134,37 @@ client.on("interactionCreate", async (interaction) => {
     }
     await interaction.reply({
       content: `✅ Salon sélectionné`,
+      ephemeral: true,
+    });
+  }
+
+  if (interaction.commandName === "set_score") {
+    const targetUser =
+      interaction.options.getUser("utilisateur") || interaction.user;
+    const discordId = targetUser.id;
+    const score = interaction.options.getInteger("score");
+
+    if (score === null) {
+      await interaction.reply({
+        content: "❌ Le score doit être un nombre.",
+        ephemeral: true,
+      });
+      return;
+    }
+
+    await prisma.user.upsert({
+      where: { discordId },
+      update: { score },
+      create: {
+        discordId,
+        username: targetUser.username,
+        score,
+        guildId: interaction.guild?.id,
+      },
+    });
+
+    await interaction.reply({
+      content: `✅ Score de <@${targetUser.id}> mis à jour : ${score} points.`,
       ephemeral: true,
     });
   }
