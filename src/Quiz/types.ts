@@ -16,7 +16,7 @@ export type Question = {
 export type Configuration = {
   GuildId: string;
   QuizChannelId: string;
-  CurrentQuestion: String | null;
-  CurrentAnswer: String | null;
+  CurrentQuestion: string | null;
+  CurrentAnswer: string | null;
   Answered: boolean;
 };

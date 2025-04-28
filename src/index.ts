@@ -185,7 +185,10 @@ client.on("messageCreate", async (message) => {
   // Vérifie réponse au quiz
   if (
     config?.CurrentAnswer &&
-    message.content.toLowerCase().replace(",", ".") === config.CurrentAnswer &&
+    message.content
+      .toLowerCase()
+      .replace(",", ".")
+      .includes(config.CurrentAnswer) &&
     !config?.Answered
   ) {
     validAnswer(message, client);
