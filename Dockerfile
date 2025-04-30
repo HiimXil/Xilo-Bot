@@ -6,7 +6,6 @@ RUN npm ci
 COPY . .
 RUN npm run build
 RUN npm run prisma:deploy
-RUN npm run prisma:migrate
 
 # Add timezone configuration
 RUN apk add --no-cache tzdata
