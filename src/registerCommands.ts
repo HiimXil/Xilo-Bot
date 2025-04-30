@@ -36,6 +36,18 @@ const commands = [
     .setName("select_quiz_channel")
     .setDescription("Sélectionne le salon où le quiz sera joué"),
   new SlashCommandBuilder()
+    .setName("select_quiz_role")
+    .setDescription("Sélectionne le rôle qui sera ping pour jouer au quiz")
+    .addRoleOption((option) =>
+      option
+        .setName("role")
+        .setDescription("le rôle qui sera ping pour jouer au quiz")
+        .setRequired(true)
+    ),
+  new SlashCommandBuilder()
+    .setName("hint")
+    .setDescription("Donne un indice pour trouver la réponse à la question"),
+  new SlashCommandBuilder()
     .setName("add_question")
     .setDescription("Permet d'ajouter une question au quiz")
     .addStringOption((option) =>

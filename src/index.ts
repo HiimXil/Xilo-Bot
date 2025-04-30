@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import { resolve } from "path";
 import { PrismaClient } from "@prisma/client";
 import type { User, Configuration } from "./Quiz/types";
-import { AskQuestion, validAnswer } from "./Quiz/quiz";
+import { AskQuestion, CreateHint, validAnswer } from "./Quiz/quiz";
 
 const prisma = new PrismaClient();
 
@@ -138,6 +138,7 @@ client.on("interactionCreate", async (interaction) => {
     });
   }
 
+  // /set_score
   if (interaction.commandName === "set_score") {
     const targetUser =
       interaction.options.getUser("utilisateur") || interaction.user;
@@ -166,6 +167,69 @@ client.on("interactionCreate", async (interaction) => {
     await interaction.reply({
       content: `✅ Score de <@${targetUser.id}> mis à jour : ${score} points.`,
       ephemeral: true,
+    });
+  }
+  // /select_quiz_role
+  if (interaction.commandName === "select_quiz_role") {
+    const role = interaction.options.getRole("role");
+    const guild = interaction.guild;
+    if (!guild) {
+      await interaction.reply({
+        content: "❌ Cette commande ne peut pas être utilisée ici.",
+        ephemeral: true,
+      });
+      return;
+    }
+    if (!role) {
+      await interaction.reply({
+        content: "❌ Veuillez sélectionner un rôle.",
+        ephemeral: true,
+      });
+      return;
+    }
+    const GuildId = await prisma.configuration.findUnique({
+      where: { GuildId: guild.id },
+    });
+    if (GuildId) {
+      await prisma.configuration.update({
+        where: { GuildId: guild.id },
+        data: { QuizRoleId: role.id },
+      });
+    } else {
+      await interaction.reply({
+        content: `❌ Veuillez d'abord sélectionner un salon.`,
+        ephemeral: true,
+      });
+    }
+    await interaction.reply({
+      content: `✅ Rôle sélectionné`,
+      ephemeral: true,
+    });
+  }
+
+  // /hint
+  if (interaction.commandName === "hint") {
+    const config: Configuration | null = await prisma.configuration.findFirst({
+      where: { GuildId: interaction.guild?.id },
+    });
+    if (!config) {
+      await interaction.reply({
+        content: "❌ Aucune question en cours.",
+        ephemeral: true,
+      });
+      return;
+    }
+    if (config.Answered === true) {
+      await interaction.reply({
+        content: "❌ Aucune question en cours.",
+        ephemeral: true,
+      });
+      return;
+    }
+    const hint = CreateHint(config.CurrentAnswer);
+    await interaction.reply({
+      content: `💡 Indice : ${hint}`,
+      ephemeral: false,
     });
   }
 });

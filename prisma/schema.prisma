@@ -31,6 +31,7 @@ model Question {
 model Configuration {
   GuildId         String  @id
   QuizChannelId   String
+  QuizRoleId      String?
   CurrentQuestion String?
   CurrentAnswer   String?
   Answered        Boolean @default(false)

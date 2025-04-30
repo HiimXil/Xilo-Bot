@@ -68,7 +68,16 @@ export async function AskQuestion(client: Client) {
             },
           });
           const channel = client.channels.cache.get(conf.QuizChannelId);
-          if (channel && channel.isTextBased() && "send" in channel) {
+          if (
+            channel &&
+            channel.isTextBased() &&
+            "send" in channel &&
+            conf.QuizRoleId
+          ) {
+            channel.send(
+              `❓ **Question** : ${questionText} <@&${conf.QuizRoleId}>`
+            );
+          } else if (channel && channel.isTextBased() && "send" in channel) {
             channel.send(`❓ **Question** : ${questionText}`);
           }
         } else if (conf.Answered === false) {
@@ -76,7 +85,16 @@ export async function AskQuestion(client: Client) {
           console.log("Question : ", conf.CurrentQuestion);
           console.log("Réponse : ", conf.CurrentAnswer);
           const channel = client.channels.cache.get(conf.QuizChannelId);
-          if (channel && channel.isTextBased() && "send" in channel) {
+          if (
+            channel &&
+            channel.isTextBased() &&
+            "send" in channel &&
+            conf.QuizRoleId
+          ) {
+            channel.send(
+              `❓ **Question** : ${conf.CurrentQuestion} <@&${conf.QuizRoleId}>`
+            );
+          } else if (channel && channel.isTextBased() && "send" in channel) {
             channel.send(`❓ **Question** : ${conf.CurrentQuestion}`);
           }
         }
@@ -154,4 +172,20 @@ export async function validAnswer(message: Message<boolean>, client: Client) {
   setTimeout(() => {
     AskQuestion(client);
   }, waitTime);
+}
+
+export function CreateHint(answer: string | null) {
+  if (!answer) return;
+  let hint = "";
+  answer.split(" ").forEach((word) => {
+    if (word.length > 1) {
+      const wordmasked = word
+        .split("")
+        .map((char, index) => (index < 1 ? char.toUpperCase() : "\\_"))
+        .join("");
+      console.log("Indice : ", wordmasked);
+      hint += wordmasked + " ";
+    }
+  });
+  return hint;
 }
