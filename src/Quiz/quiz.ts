@@ -114,16 +114,31 @@ export async function validAnswer(message: Message<boolean>, client: Client) {
   });
 
   // Envoie la prochaine question
-  // Si l'heure actuelle est entre 22h et 8h, attend jusqu'à 9h
+  // Si l'heure actuelle est entre 22h et 9h, attend jusqu'à 9h
   const now = new Date();
   const currentHour = now.getHours();
-  console.log("Heure actuelle :", currentHour);
-  if (currentHour >= 22 || currentHour < 8) {
-    const nineHour = 9 * 60 * 60 * 1000;
-    const oneday = 24 * 60 * 60 * 1000;
-    const waitTime =
-      (oneday - now.getHours() * now.getMinutes() * 60 * 1000 + nineHour) %
-      oneday;
+  const currentMinute = now.getMinutes();
+  const currentSecond = now.getSeconds();
+  console.log(
+    "Heure actuelle :",
+    currentHour,
+    "h",
+    currentMinute,
+    "m",
+    currentSecond,
+    "s"
+  );
+
+  if (currentHour >= 22 || currentHour < 9) {
+    const nineHour = 9 * 60 * 60 * 1000; // 9h en millisecondes
+    const oneday = 24 * 60 * 60 * 1000; // 24h en millisecondes
+
+    const timeElapsedToday =
+      currentHour * 60 * 60 * 1000 +
+      currentMinute * 60 * 1000 +
+      currentSecond * 1000;
+
+    const waitTime = (oneday - timeElapsedToday + nineHour) % oneday;
     console.log("Attendre jusqu'à 9h du matin avant la prochaine question...");
     console.log("Temps d'attente :", waitTime / 1000 / 60 / 60, "heures");
     setTimeout(() => {
