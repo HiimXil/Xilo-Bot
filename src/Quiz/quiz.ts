@@ -19,6 +19,7 @@ async function generateQuestion(): Promise<string[] | undefined> {
         id: true,
         text: true,
         answer: true,
+        description: true,
         weight: true,
       },
     });

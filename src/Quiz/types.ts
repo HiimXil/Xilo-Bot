@@ -11,6 +11,7 @@ export type Question = {
   text: string;
   answer: string;
   description: string;
+  weight: number;
 };
 
 export type Configuration = {
