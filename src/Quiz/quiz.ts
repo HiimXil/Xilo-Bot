@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { generateMathQuestion } from "./mathQuestion";
-import { Configuration } from "./types";
+import { Configuration, Question } from "./types";
 import { Message, Client } from "discord.js";
 
 const prisma = new PrismaClient();
@@ -27,7 +27,7 @@ async function generateQuestion(): Promise<string[] | undefined> {
     // Crée un pool où chaque question apparaît autant de fois que son poids
     const weightedPool: typeof questions = [];
 
-    questions.forEach((q) => {
+    questions.forEach((q: Question) => {
       for (let i = 0; i < q.weight; i++) {
         weightedPool.push(q);
       }
