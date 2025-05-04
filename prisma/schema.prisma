@@ -26,6 +26,7 @@ model Question {
   text        String
   answer      String
   description String
+  weight      Int    @default(1)
 }
 
 model Configuration {

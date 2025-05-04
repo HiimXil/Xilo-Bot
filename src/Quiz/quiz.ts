@@ -10,14 +10,49 @@ async function generateQuestion(): Promise<string[] | undefined> {
   let questionText: string = "";
   let answerText: string = "";
   console.log("Nouvelle question...");
-  // 70%/30% chance question de base ou math
-  if (Math.random() < 0.7) {
+  // 90%/10% chance question de base ou math
+  if (Math.random() < 0.9) {
     console.log("Question de la base de données");
-    const count = await prisma.question.count();
-    const rand = Math.floor(Math.random() * count);
-    const question = await prisma.question.findFirst({
-      skip: rand,
+    // Récupère toutes les questions avec leur poids
+    const questions = await prisma.question.findMany({
+      select: {
+        id: true,
+        text: true,
+        answer: true,
+        weight: true,
+      },
     });
+
+    // Crée un pool où chaque question apparaît autant de fois que son poids
+    const weightedPool: typeof questions = [];
+
+    questions.forEach((q) => {
+      for (let i = 0; i < q.weight; i++) {
+        weightedPool.push(q);
+      }
+    });
+
+    // Tire une question au hasard dans le pool pondéré
+    const randomIndex = Math.floor(Math.random() * weightedPool.length);
+    const question = weightedPool[randomIndex];
+    // reinitialise le poids de la question tirée et ajoute 1 a toutes les autres questions mais pas dans ce sens pcq sinon ce serait bête
+    await prisma.question.updateMany({
+      where: {
+        id: {
+          not: question.id,
+        },
+      },
+      data: {
+        weight: { increment: 1 },
+      },
+    });
+    await prisma.question.update({
+      where: { id: question.id },
+      data: {
+        weight: 0,
+      },
+    });
+    console.log("Question tirée : ", question);
 
     if (!question) return;
     questionText = question.text;
