@@ -1,59 +1,67 @@
-import { PrismaClient } from "@prisma/client";
+import { time } from "console";
+import { prisma } from "../Utils/prisma";
 import { generateMathQuestion } from "./mathQuestion";
-import { Configuration, Question } from "./types";
+import { Configuration, Question, Weight } from "./types";
 import { Message, Client } from "discord.js";
 
-const prisma = new PrismaClient();
+//Tableau qui stocke les timeout de chaque guildId
+export const timeouts: { [key: string]: NodeJS.Timeout | null } = {};
 
 // Génération de la question
-async function generateQuestion(): Promise<string[] | undefined> {
+async function generateQuestion(
+  guildId: string
+): Promise<string[] | undefined> {
   let questionText: string = "";
   let answerText: string = "";
   console.log("Nouvelle question...");
   // 90%/10% chance question de base ou math
   if (Math.random() < 0.9) {
     console.log("Question de la base de données");
+    await GenerateWeight(guildId);
     // Récupère toutes les questions avec leur poids
-    const questions = await prisma.question.findMany({
+    const weights: Weight[] = await prisma.weight.findMany({
       select: {
-        id: true,
-        text: true,
-        answer: true,
-        description: true,
+        questionId: true,
+        guildId: true,
         weight: true,
       },
     });
 
     // Crée un pool où chaque question apparaît autant de fois que son poids
-    const weightedPool: typeof questions = [];
-
-    questions.forEach((q: Question) => {
-      for (let i = 0; i < q.weight; i++) {
-        weightedPool.push(q);
+    const weightedPool: Question[] = [];
+    for (const w of weights) {
+      // Récupère la question correspondante
+      const question = await prisma.question.findUnique({
+        where: { id: w.questionId },
+      });
+      if (!question) return;
+      for (let i = 0; i < w.weight; i++) {
+        weightedPool.push(question);
       }
-    });
-
+    }
     // Tire une question au hasard dans le pool pondéré
     const randomIndex = Math.floor(Math.random() * weightedPool.length);
     const question = weightedPool[randomIndex];
+    console.log("Question tirée : ", question);
+
     // reinitialise le poids de la question tirée et ajoute 1 a toutes les autres questions mais pas dans ce sens pcq sinon ce serait bête
-    await prisma.question.updateMany({
+    await prisma.weight.updateMany({
       where: {
-        id: {
-          not: question.id,
-        },
+        guildId: guildId,
+        questionId: { not: question.id },
       },
       data: {
         weight: { increment: 1 },
       },
     });
-    await prisma.question.update({
-      where: { id: question.id },
+    await prisma.weight.update({
+      where: {
+        guildId_questionId: { guildId: guildId, questionId: question.id },
+      },
       data: {
         weight: 0,
       },
     });
-    console.log("Question tirée : ", question);
 
     if (!question) return;
     questionText = question.text;
@@ -71,67 +79,81 @@ async function generateQuestion(): Promise<string[] | undefined> {
 
 // Sauvegarde la question et envoie la question dans le salon
 export async function AskQuestion(client: Client) {
+  // Recupére chaque configuration (Serveur)
   await prisma.configuration
     .findMany()
     .then(async (config: Configuration[]) => {
       if (!config) {
-        console.log("Aucun salon configuré pour le quiz.");
+        console.log("Aucun serveur pour le quiz.");
         return;
       }
       config.forEach(async (conf: Configuration) => {
-        if (!conf.QuizChannelId) {
+        if (!conf.quizChannelId) {
           console.log("Aucun salon configuré pour le quiz.");
           return;
         }
+        const state = await prisma.state.findUnique({
+          where: { guildId: conf.guildId },
+        });
+
+        // Si on a pas de State ou que on a jamais poser de question ou que on a déjà répondu
         if (
-          conf.CurrentQuestion === null ||
-          conf.CurrentQuestion === "" ||
-          conf.Answered
+          !state ||
+          state.currentQuestion === "" ||
+          state.currentQuestion === null ||
+          state.currentAnswer === "" ||
+          state.currentAnswer === null ||
+          state.answered
         ) {
-          const result = await generateQuestion();
+          const result = await generateQuestion(conf.guildId);
           if (!result) {
             console.log("Failed to generate a question.");
             return;
           }
           const [questionText, answerText] = result;
-          console.log("Update de la question pour la guilde : ", conf.GuildId);
-          await prisma.configuration.update({
-            where: { GuildId: conf.GuildId },
-            data: {
-              CurrentQuestion: questionText,
-              CurrentAnswer: answerText,
-              Answered: false,
+          console.log("Update de la question pour la guilde : ", conf.guildId);
+          await prisma.state.upsert({
+            where: { guildId: conf.guildId },
+            update: {
+              currentQuestion: questionText,
+              currentAnswer: answerText,
+              answered: false,
+            },
+            create: {
+              guildId: conf.guildId,
+              currentQuestion: questionText,
+              currentAnswer: answerText,
+              answered: false,
             },
           });
-          const channel = client.channels.cache.get(conf.QuizChannelId);
+          const channel = client.channels.cache.get(conf.quizChannelId);
           if (
             channel &&
             channel.isTextBased() &&
             "send" in channel &&
-            conf.QuizRoleId
+            conf.quizRoleId
           ) {
             channel.send(
-              `❓ **Question** : ${questionText} <@&${conf.QuizRoleId}>`
+              `❓ **Question** : ${questionText} <@&${conf.quizRoleId}>`
             );
           } else if (channel && channel.isTextBased() && "send" in channel) {
             channel.send(`❓ **Question** : ${questionText}`);
           }
-        } else if (conf.Answered === false) {
+        }
+        // Si la question a déjà été posée et que la réponse n'a pas été donnée
+        else if (state.answered === false) {
           console.log("Question déjà posée, pas de nouvelle question.");
-          console.log("Question : ", conf.CurrentQuestion);
-          console.log("Réponse : ", conf.CurrentAnswer);
-          const channel = client.channels.cache.get(conf.QuizChannelId);
-          if (
-            channel &&
-            channel.isTextBased() &&
-            "send" in channel &&
-            conf.QuizRoleId
-          ) {
-            channel.send(
-              `❓ **Question** : ${conf.CurrentQuestion} <@&${conf.QuizRoleId}>`
-            );
-          } else if (channel && channel.isTextBased() && "send" in channel) {
-            channel.send(`❓ **Question** : ${conf.CurrentQuestion}`);
+          console.log("Question : ", state.currentQuestion);
+          console.log("Réponse : ", state.currentAnswer);
+          const channel = client.channels.cache.get(conf.quizChannelId);
+          if (channel && channel.isTextBased() && "send" in channel) {
+            if (conf.quizRoleId) {
+              channel.send(
+                `❓ **Question** : ${state.currentQuestion} <@&${conf.quizRoleId}>`
+              );
+            } else {
+              channel.send(`❓ **Question** : ${state.currentQuestion}`);
+            }
           }
         }
       });
@@ -140,10 +162,10 @@ export async function AskQuestion(client: Client) {
 
 // Vérifie la réponse
 export async function validAnswer(message: Message<boolean>, client: Client) {
-  await prisma.configuration.update({
-    where: { GuildId: message.guild?.id },
+  await prisma.state.update({
+    where: { guildId: message.guild?.id },
     data: {
-      Answered: true,
+      answered: true,
     },
   });
   message.reply(
@@ -154,16 +176,21 @@ export async function validAnswer(message: Message<boolean>, client: Client) {
   const username = message.author.username;
 
   await prisma.user.upsert({
-    where: { discordId, guildId: message.guild?.id },
+    where: {
+      guildId_discordId: {
+        guildId: message.guild?.id!,
+        discordId: discordId,
+      },
+    },
     update: {
       score: { increment: 1 },
       username,
     },
     create: {
-      discordId,
+      discordId: discordId,
       username,
       score: 1,
-      guildId: message.guild?.id,
+      guildId: message.guild?.id!,
     },
   });
 
@@ -182,7 +209,6 @@ export async function validAnswer(message: Message<boolean>, client: Client) {
     currentSecond,
     "s"
   );
-
   if (currentHour >= 22 || currentHour < 9) {
     const nineHour = 9 * 60 * 60 * 1000; // 9h en millisecondes
     const oneday = 24 * 60 * 60 * 1000; // 24h en millisecondes
@@ -195,7 +221,7 @@ export async function validAnswer(message: Message<boolean>, client: Client) {
     const waitTime = (oneday - timeElapsedToday + nineHour) % oneday;
     console.log("Attendre jusqu'à 9h du matin avant la prochaine question...");
     console.log("Temps d'attente :", waitTime / 1000 / 60 / 60, "heures");
-    setTimeout(() => {
+    timeouts[message.guild?.id!] = setTimeout(() => {
       AskQuestion(client);
     }, waitTime);
     return;
@@ -205,11 +231,12 @@ export async function validAnswer(message: Message<boolean>, client: Client) {
     Math.floor(Math.random() * (90 * 60 * 1000 - 60 * 60 * 1000 + 1)) +
     60 * 60 * 1000;
   console.log("Attendre entre 1h00 et 1h30 avant la prochaine question...");
-  setTimeout(() => {
+  timeouts[message.guild?.id!] = setTimeout(() => {
     AskQuestion(client);
   }, waitTime);
 }
 
+// Crée un indice à partir de la réponse
 export function CreateHint(answer: string | null) {
   if (!answer) return;
   let hint = "";
@@ -224,4 +251,22 @@ export function CreateHint(answer: string | null) {
     }
   });
   return hint;
+}
+
+async function GenerateWeight(guildId: string) {
+  const questions: Question[] = await prisma.question.findMany();
+  for (const question of questions) {
+    if (!question) continue;
+    await prisma.weight.upsert({
+      where: {
+        guildId_questionId: { questionId: question.id, guildId: guildId },
+      },
+      update: {},
+      create: {
+        questionId: question.id,
+        guildId: guildId,
+        weight: 1,
+      },
+    });
+  }
 }

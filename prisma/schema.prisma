@@ -14,26 +14,42 @@ datasource db {
 }
 
 model User {
-  id        String @id @default(cuid())
-  discordId String @unique
+  guildId   String
+  discordId String
   username  String
   score     Int    @default(0)
-  guildId   String @default("")
+
+  @@id([guildId, discordId])
 }
 
 model Question {
-  id          Int    @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   text        String
   answer      String
   description String
-  weight      Int    @default(1)
+  Weight      Weight[]
+}
+
+model Weight {
+  questionId       Int
+  guildId          String
+  weight           Int      @default(1)
+  QuestionRelation Question @relation(fields: [questionId], references: [id])
+  StateRelation    State    @relation(fields: [guildId], references: [guildId])
+
+  @@id([guildId, questionId])
 }
 
 model Configuration {
-  GuildId         String  @id
-  QuizChannelId   String
-  QuizRoleId      String?
-  CurrentQuestion String?
-  CurrentAnswer   String?
-  Answered        Boolean @default(false)
+  guildId       String  @id
+  quizChannelId String?
+  quizRoleId    String?
+}
+
+model State {
+  guildId         String   @id
+  currentQuestion String?
+  currentAnswer   String?
+  answered        Boolean  @default(false)
+  Weight          Weight[]
 }

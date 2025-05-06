@@ -1,11 +1,10 @@
 import { Client, GatewayIntentBits } from "discord.js";
 import dotenv from "dotenv";
 import { resolve } from "path";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "./Utils/prisma";
 import type { User, Configuration } from "./Quiz/types";
-import { AskQuestion, CreateHint, validAnswer } from "./Quiz/quiz";
-
-const prisma = new PrismaClient();
+import { AskQuestion, CreateHint, validAnswer, timeouts } from "./Quiz/quiz";
+import { State } from "@prisma/client";
 
 dotenv.config({ path: resolve(__dirname, "../.env") });
 
@@ -26,6 +25,13 @@ client.once("ready", () => {
 // Commandes Slash
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
+  if (!interaction.guild) {
+    await interaction.reply({
+      content: "❌ Cette commande ne peut pas être utilisée ici.",
+      ephemeral: true,
+    });
+    return;
+  }
 
   // /score
   if (interaction.commandName === "score") {
@@ -34,7 +40,9 @@ client.on("interactionCreate", async (interaction) => {
     const discordId = targetUser.id;
 
     const user = await prisma.user.findUnique({
-      where: { discordId },
+      where: {
+        guildId_discordId: { discordId, guildId: interaction.guild?.id },
+      },
     });
 
     const score = user?.score ?? 0;
@@ -117,18 +125,18 @@ client.on("interactionCreate", async (interaction) => {
       return;
     }
     const GuildId = await prisma.configuration.findUnique({
-      where: { GuildId: guild.id },
+      where: { guildId: guild.id },
     });
     if (GuildId) {
       await prisma.configuration.update({
-        where: { GuildId: guild.id },
-        data: { QuizChannelId: channel.id },
+        where: { guildId: guild.id },
+        data: { quizChannelId: channel.id },
       });
     } else {
       await prisma.configuration.create({
         data: {
-          GuildId: guild.id,
-          QuizChannelId: channel.id,
+          guildId: guild.id,
+          quizChannelId: channel.id,
         },
       });
     }
@@ -154,7 +162,9 @@ client.on("interactionCreate", async (interaction) => {
     }
 
     await prisma.user.upsert({
-      where: { discordId },
+      where: {
+        guildId_discordId: { guildId: interaction.guild?.id, discordId },
+      },
       update: { score },
       create: {
         discordId,
@@ -188,12 +198,12 @@ client.on("interactionCreate", async (interaction) => {
       return;
     }
     const GuildId = await prisma.configuration.findUnique({
-      where: { GuildId: guild.id },
+      where: { guildId: guild.id },
     });
     if (GuildId) {
       await prisma.configuration.update({
-        where: { GuildId: guild.id },
-        data: { QuizRoleId: role.id },
+        where: { guildId: guild.id },
+        data: { quizRoleId: role.id },
       });
     } else {
       await interaction.reply({
@@ -209,26 +219,83 @@ client.on("interactionCreate", async (interaction) => {
 
   // /hint
   if (interaction.commandName === "hint") {
-    const config: Configuration | null = await prisma.configuration.findFirst({
-      where: { GuildId: interaction.guild?.id },
+    const state: State | null = await prisma.state.findFirst({
+      where: { guildId: interaction.guild?.id },
     });
-    if (!config) {
+    if (!state) {
       await interaction.reply({
         content: "❌ Aucune question en cours.",
         ephemeral: true,
       });
       return;
     }
-    if (config.Answered === true) {
+    if (state.answered === true) {
       await interaction.reply({
         content: "❌ Aucune question en cours.",
         ephemeral: true,
       });
       return;
     }
-    const hint = CreateHint(config.CurrentAnswer);
+    const hint = CreateHint(state.currentAnswer);
     await interaction.reply({
       content: `💡 Indice : ${hint}`,
+      ephemeral: false,
+    });
+  }
+
+  // /trigger
+  if (interaction.commandName === "trigger") {
+    const state: State | null = await prisma.state.findFirst({
+      where: { guildId: interaction.guild?.id },
+    });
+    if (state?.answered === false) {
+      await interaction.reply({
+        content: "❌ Une question est déjà en cours.",
+        ephemeral: true,
+      });
+      return;
+    }
+    if (timeouts[interaction.guild?.id]) {
+      clearTimeout(timeouts[interaction.guild.id]!);
+    }
+    AskQuestion(client);
+    await interaction.reply({
+      content: "✅ Question envoyée.",
+      ephemeral: true,
+    });
+  }
+
+  // /explain
+  if (interaction.commandName === "explain") {
+    const state: State | null = await prisma.state.findFirst({
+      where: { guildId: interaction.guild?.id },
+    });
+    if (!state) {
+      await interaction.reply({
+        content: "❌ Aucune question en cours.",
+        ephemeral: true,
+      });
+      return;
+    }
+    if (state.answered === false) {
+      await interaction.reply({
+        content: "❌ Faut répondre avant :)",
+        ephemeral: true,
+      });
+      return;
+    }
+    const question = await prisma.question.findFirst({
+      where: { text: state.currentQuestion ?? "" },
+    });
+    if (!question) {
+      await interaction.reply({
+        content: "❌ Aucune question trouvée.",
+        ephemeral: true,
+      });
+      return;
+    }
+    await interaction.reply({
+      content: `📖 Explication : ${question.description}`,
       ephemeral: false,
     });
   }
@@ -243,17 +310,17 @@ client.on("messageCreate", async (message) => {
     return;
   }
 
-  const config: Configuration | null = await prisma.configuration.findFirst({
-    where: { GuildId: message.guild?.id },
+  const state: State | null = await prisma.state.findFirst({
+    where: { guildId: message.guild?.id },
   });
   // Vérifie réponse au quiz
   if (
-    config?.CurrentAnswer &&
+    state?.currentAnswer &&
     message.content
       .toLowerCase()
       .replace(",", ".")
-      .includes(config.CurrentAnswer) &&
-    !config?.Answered
+      .includes(state.currentAnswer) &&
+    !state?.answered
   ) {
     validAnswer(message, client);
   }

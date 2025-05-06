@@ -1,9 +1,8 @@
 export type User = {
-  id: string;
+  guildId: string;
   discordId: string;
   username: string;
   score: number;
-  guildId: string;
 };
 
 export type Question = {
@@ -11,14 +10,23 @@ export type Question = {
   text: string;
   answer: string;
   description: string;
+};
+
+export type Weight = {
+  questionId: number;
+  guildId: string;
   weight: number;
 };
 
 export type Configuration = {
-  GuildId: string;
-  QuizChannelId: string;
-  QuizRoleId: string | null;
-  CurrentQuestion: string | null;
-  CurrentAnswer: string | null;
-  Answered: boolean;
+  guildId: string;
+  quizChannelId: string | null;
+  quizRoleId: string | null;
+};
+
+export type State = {
+  guildId: string;
+  currentQuestion: string | null;
+  currentAnswer: string | null;
+  answered: boolean;
 };

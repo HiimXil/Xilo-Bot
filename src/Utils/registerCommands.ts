@@ -48,6 +48,12 @@ const commands = [
     .setName("hint")
     .setDescription("Donne un indice pour trouver la réponse à la question"),
   new SlashCommandBuilder()
+    .setName("trigger")
+    .setDescription("Déclenche le quiz dans le salon sélectionné"),
+  new SlashCommandBuilder()
+    .setName("explain")
+    .setDescription("Explique la réponse à la question actuelle"),
+  new SlashCommandBuilder()
     .setName("add_question")
     .setDescription("Permet d'ajouter une question au quiz")
     .addStringOption((option) =>
