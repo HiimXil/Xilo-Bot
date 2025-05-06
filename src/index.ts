@@ -2,9 +2,8 @@ import { Client, GatewayIntentBits } from "discord.js";
 import dotenv from "dotenv";
 import { resolve } from "path";
 import { prisma } from "./Utils/prisma";
-import type { User, Configuration } from "./Quiz/types";
+import type { User, Configuration, State } from "./Quiz/types";
 import { AskQuestion, CreateHint, validAnswer, timeouts } from "./Quiz/quiz";
-import { State } from "@prisma/client";
 
 dotenv.config({ path: resolve(__dirname, "../.env") });
 
