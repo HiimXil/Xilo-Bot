@@ -1,0 +1,20 @@
+import { SlashCommandBuilder, type CommandInteraction } from "discord.js";
+import type Command from "../interfaces/Command";
+import { prisma } from "../Utils/prisma";
+
+const command: Command = {
+  data: new SlashCommandBuilder() as SlashCommandBuilder,
+
+  async execute(interaction: CommandInteraction) {
+    if (!interaction.isChatInputCommand()) return;
+    if (!interaction.guild) {
+      await interaction.reply({
+        content: "❌ Cette commande ne peut pas être utilisée ici.",
+        ephemeral: true,
+      });
+      return;
+    }
+  },
+};
+
+export default command;

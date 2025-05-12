@@ -1,7 +1,7 @@
 import { time } from "console";
 import { prisma } from "../Utils/prisma";
 import { generateMathQuestion } from "./mathQuestion";
-import { Configuration, Question, Weight } from "./types";
+import { Configuration, Question, Weight } from "../Utils/types";
 import { Message, Client } from "discord.js";
 
 //Tableau qui stocke les timeout de chaque guildId
