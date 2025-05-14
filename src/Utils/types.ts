@@ -22,6 +22,9 @@ export type Configuration = {
   guildId: string;
   quizChannelId: string | null;
   quizRoleId: string | null;
+  wordleCategoryId: string | null;
+  wordleRoleId: string | null;
+  wordleMessageId: string | null;
 };
 
 export type State = {

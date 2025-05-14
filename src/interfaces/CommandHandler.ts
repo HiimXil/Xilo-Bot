@@ -1,6 +1,6 @@
 import { Client, REST, Routes } from "discord.js";
 import type Command from "../interfaces/Command";
-import { Logger } from "../Utils/logger";
+import { Logger } from "../Utils/Logger";
 
 export default class CommandHandler {
   private commands: Map<string, Command> = new Map();

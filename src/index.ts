@@ -1,10 +1,11 @@
 import dotenv from "dotenv";
 import { resolve } from "path";
 import { prisma } from "./Utils/prisma";
-import type { State } from "./Utils/types";
+import type { Configuration, State } from "./Utils/types";
 import { AskQuestion, validAnswer } from "./Quiz/quiz";
 import { client } from "./Utils/Client";
 import CommandHandler from "./interfaces/CommandHandler";
+import { createWordleChannel, deleteWordleChannel } from "./Wordle/wordle";
 
 // Importation des commandes
 import add_question from "./Commands/add_question";
@@ -16,6 +17,8 @@ import topscore from "./Commands/topscore";
 import set_score from "./Commands/set_score";
 import select_quiz_channel from "./Commands/select_quiz_channel";
 import select_quiz_role from "./Commands/select_quiz_role";
+import setup_wordle from "./Commands/setup_wordle";
+import { Logger } from "./Utils/Logger";
 
 dotenv.config({ path: resolve(__dirname, "../.env") });
 
@@ -29,6 +32,7 @@ commandHandler.addCommand(topscore);
 commandHandler.addCommand(set_score);
 commandHandler.addCommand(select_quiz_channel);
 commandHandler.addCommand(select_quiz_role);
+commandHandler.addCommand(setup_wordle);
 
 // Demarrage du bot
 client.once("ready", () => {
@@ -61,6 +65,20 @@ client.on("interactionCreate", async (interaction) => {
   }
 });
 
+client.on("messageReactionAdd", async (reaction, user) => {
+  if (user.bot) return;
+  // Si la réaction est partielle, on la récupère
+  if (reaction.partial) {
+    try {
+      await reaction.fetch();
+    } catch (error) {
+      Logger.error("Erreur lors du fetch de la réaction : " + error);
+      return;
+    }
+  }
+  createWordleChannel(reaction, user);
+});
+
 // Action autour des messages
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
@@ -68,6 +86,11 @@ client.on("messageCreate", async (message) => {
   if (message.content === "!ping") {
     message.reply("Pong !");
     return;
+  }
+
+  if (message.content === "!clear") {
+    // Supprime tous les salons de Wordle
+    deleteWordleChannel(message.guild!);
   }
 
   const state: State | null = await prisma.state.findFirst({

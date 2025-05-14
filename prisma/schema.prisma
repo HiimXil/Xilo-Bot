@@ -41,9 +41,12 @@ model Weight {
 }
 
 model Configuration {
-  guildId       String  @id
-  quizChannelId String?
-  quizRoleId    String?
+  guildId          String  @id
+  quizChannelId    String?
+  quizRoleId       String?
+  wordleCategoryId String?
+  wordleRoleId     String?
+  wordleMessageId  String?
 }
 
 model State {
@@ -51,5 +54,15 @@ model State {
   currentQuestion String?
   currentAnswer   String?
   answered        Boolean  @default(false)
+  wordleWord      String?
   Weight          Weight[]
+}
+
+model Wordle {
+  guildId   String
+  discordId String
+  channel   String?
+  tryCount  Int     @default(0)
+
+  @@id([guildId, discordId])
 }
