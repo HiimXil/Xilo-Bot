@@ -1,7 +1,9 @@
 #!/bin/sh
 
+
 # Exécuter les migrations Prisma
 echo "Applying database migrations..."
+npx prisma generate
 npx prisma migrate deploy
 
 # Démarrer l'application
