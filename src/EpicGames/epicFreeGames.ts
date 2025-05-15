@@ -46,7 +46,7 @@ export async function epicFreeGames() {
             )}:R>`
           )
           .setColor(0x2374e1)
-          .setImage(image || "");
+          .setThumbnail(image || "");
 
         await prisma.freeGameId.upsert({
           where: { id: game.id },
@@ -62,7 +62,7 @@ export async function epicFreeGames() {
         const existingGame = await prisma.freeGameId.findUnique({
           where: { id: game.id },
         });
-        if (!existingGame?.displayed) {
+        if (existingGame?.displayed) {
           const guilds = await prisma.configuration.findMany({
             where: { freeGameChannelId: { not: null } },
           });
