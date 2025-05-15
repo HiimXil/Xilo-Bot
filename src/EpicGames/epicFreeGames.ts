@@ -26,12 +26,16 @@ export async function epicFreeGames() {
       const title = game.title;
       const originalPrice = game.price.totalPrice.originalPrice;
       const price = game.price.totalPrice.discountPrice;
-      const urlSlug = game.urlSlug;
+      const productSlug = game.productSlug;
       const image = game.keyImages.find(
-        (img) => img.type === "OfferImageWide"
+        (img) => img.type === "OfferImageTall"
       )?.url;
 
-      if (game.promotions && game.promotions.promotionalOffers.length > 0) {
+      if (
+        game.promotions &&
+        game.promotions.promotionalOffers.length > 0 &&
+        game.price.totalPrice.discountPrice < 500
+      ) {
         const offer = game.promotions.promotionalOffers[0].promotionalOffers[0];
         const startDate = new Date(offer.startDate);
         const endDate = new Date(offer.endDate);
@@ -39,14 +43,14 @@ export async function epicFreeGames() {
         const embed = new EmbedBuilder()
           .setTitle(title)
           .setDescription(
-            `**Open in :**\n- [Epicgames.com](https://store.epicgames.com/fr/p/${urlSlug}) | [Epic Launcher](https://store.epicgames.com/launch)\n\n**~~${(
+            `**Open in :**\n- [Epicgames.com](https://store.epicgames.com/fr/p/${productSlug}) | [Epic Launcher](https://store.epicgames.com/launch)\n\n**~~${(
               originalPrice / 100
-            ).toFixed(2)}€~~ -> ${price}€**\n\n🕒 End in <t:${Math.floor(
+            ).toFixed(2)}€~~ -> ${price / 100}€**\n\n🕒 End <t:${Math.floor(
               endDate.getTime() / 1000
             )}:R>`
           )
           .setColor(0x2374e1)
-          .setThumbnail(image || "");
+          .setThumbnail(image || null);
 
         await prisma.freeGameId.upsert({
           where: { id: game.id },
@@ -62,7 +66,7 @@ export async function epicFreeGames() {
         const existingGame = await prisma.freeGameId.findUnique({
           where: { id: game.id },
         });
-        if (existingGame?.displayed) {
+        if (!existingGame?.displayed) {
           const guilds = await prisma.configuration.findMany({
             where: { freeGameChannelId: { not: null } },
           });
