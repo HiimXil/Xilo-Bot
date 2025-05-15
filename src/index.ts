@@ -44,7 +44,7 @@ client.once("ready", () => {
   commandHandler.registerCommands(client);
   if (process.env.NODE_ENV !== "development") {
     AskQuestion(client);
-
+    epicFreeGames();
     cron.schedule("0 9-23/2 * * *", () => {
       console.log("⏰ Exécution programmée de epicFreeGames()");
       epicFreeGames();
@@ -103,6 +103,10 @@ client.on("messageCreate", async (message) => {
   if (message.content === "!clear") {
     // Supprime tous les salons de Wordle
     deleteWordleChannel(message.guild!);
+  }
+
+  if (message.content === "!triggerFreeGame") {
+    epicFreeGames();
   }
 
   const state: State | null = await prisma.state.findFirst({
