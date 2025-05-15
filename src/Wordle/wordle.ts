@@ -15,7 +15,6 @@ export async function createWordleChannel(
   reaction: MessageReaction | PartialMessageReaction,
   user: User | PartialUser
 ) {
-  Logger.info(`createWordleChannel: ${reaction.message.id} ${user.id}`);
   const config: Configuration | null = await prisma.configuration.findFirst({
     where: { guildId: reaction.message.guild?.id },
   });

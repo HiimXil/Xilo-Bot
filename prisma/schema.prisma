@@ -41,12 +41,14 @@ model Weight {
 }
 
 model Configuration {
-  guildId          String  @id
-  quizChannelId    String?
-  quizRoleId       String?
-  wordleCategoryId String?
-  wordleRoleId     String?
-  wordleMessageId  String?
+  guildId           String  @id
+  quizChannelId     String?
+  quizRoleId        String?
+  wordleCategoryId  String?
+  wordleRoleId      String?
+  wordleMessageId   String?
+  freeGameChannelId String?
+  freeGameRoleId    String?
 }
 
 model State {
@@ -56,6 +58,14 @@ model State {
   answered        Boolean  @default(false)
   wordleWord      String?
   Weight          Weight[]
+}
+
+model FreeGameId {
+  id        String    @id
+  name      String
+  startDate DateTime?
+  endDate   DateTime?
+  displayed Boolean   @default(false)
 }
 
 model Wordle {

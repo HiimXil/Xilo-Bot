@@ -6,6 +6,9 @@ import { AskQuestion, validAnswer } from "./Quiz/quiz";
 import { client } from "./Utils/Client";
 import CommandHandler from "./interfaces/CommandHandler";
 import { createWordleChannel, deleteWordleChannel } from "./Wordle/wordle";
+import { Logger } from "./Utils/Logger";
+import { epicFreeGames } from "./EpicGames/epicFreeGames";
+import cron from "node-cron";
 
 // Importation des commandes
 import add_question from "./Commands/add_question";
@@ -18,7 +21,7 @@ import set_score from "./Commands/set_score";
 import select_quiz_channel from "./Commands/select_quiz_channel";
 import select_quiz_role from "./Commands/select_quiz_role";
 import setup_wordle from "./Commands/setup_wordle";
-import { Logger } from "./Utils/Logger";
+import setup_freegame from "./Commands/setup_freegame";
 
 dotenv.config({ path: resolve(__dirname, "../.env") });
 
@@ -33,6 +36,7 @@ commandHandler.addCommand(set_score);
 commandHandler.addCommand(select_quiz_channel);
 commandHandler.addCommand(select_quiz_role);
 commandHandler.addCommand(setup_wordle);
+commandHandler.addCommand(setup_freegame);
 
 // Demarrage du bot
 client.once("ready", () => {
@@ -40,6 +44,14 @@ client.once("ready", () => {
   commandHandler.registerCommands(client);
   if (process.env.NODE_ENV !== "development") {
     AskQuestion(client);
+
+    cron.schedule("0 9-23/2 * * *", () => {
+      console.log("⏰ Exécution programmée de epicFreeGames()");
+      epicFreeGames();
+    });
+  } else {
+    console.log("Mode développement, pas de question envoyée.");
+    epicFreeGames();
   }
 });
 

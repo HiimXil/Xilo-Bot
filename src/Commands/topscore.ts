@@ -39,7 +39,7 @@ const command: Command = {
     const userIndex = top.findIndex(
       (user: User) => user.discordId === interaction.user.id
     );
-    if (userIndex > 5) {
+    if (userIndex > 4) {
       topMessage += `\n**${userIndex + 1}.** <@${interaction.user.id}> — ${
         top[userIndex].score
       } pts \n`;
