@@ -16,8 +16,9 @@ datasource db {
 model User {
   guildId   String
   discordId String
-  username  String
-  score     Int    @default(0)
+  username  String?
+  score     Int      @default(0)
+  Wordles   Wordle[]
 
   @@id([guildId, discordId])
 }
@@ -69,10 +70,17 @@ model FreeGameId {
 }
 
 model Wordle {
-  guildId   String
-  discordId String
-  channel   String?
-  tryCount  Int     @default(0)
+  guildId      String
+  discordId    String
+  channel      String?
+  resultSaved  String?
+  tryCount     Int     @default(0)
+  UserRelation User    @relation(fields: [guildId, discordId], references: [guildId, discordId])
 
   @@id([guildId, discordId])
+}
+
+model WordleWord {
+  id   Int    @id @default(autoincrement())
+  word String
 }

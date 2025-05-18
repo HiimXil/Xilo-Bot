@@ -1,7 +1,7 @@
 export type User = {
   guildId: string;
   discordId: string;
-  username: string;
+  username: string | null;
   score: number;
 };
 

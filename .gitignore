@@ -6,6 +6,8 @@ dist/
 # Env
 .env
 
+scripts/
+
 # Prisma
 prisma/dev.db
 prisma/dev.db

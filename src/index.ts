@@ -5,7 +5,12 @@ import type { Configuration, State } from "./Utils/types";
 import { AskQuestion, validAnswer } from "./Quiz/quiz";
 import { client } from "./Utils/Client";
 import CommandHandler from "./interfaces/CommandHandler";
-import { createWordleChannel, deleteWordleChannel } from "./Wordle/wordle";
+import {
+  checkWordle,
+  createWordleChannel,
+  deleteWordleChannel,
+  ChooseWordleWord,
+} from "./Wordle/wordle";
 import { Logger } from "./Utils/Logger";
 import { epicFreeGames } from "./EpicGames/epicFreeGames";
 import cron from "node-cron";
@@ -52,6 +57,10 @@ client.once("ready", () => {
   } else {
     console.log("Mode développement, pas de question envoyée.");
     epicFreeGames();
+    cron.schedule("0 9 * * *", () => {
+      console.log("⏰ Exécution programmée de ChooseWordleWord()");
+      ChooseWordleWord();
+    });
   }
 });
 
@@ -100,14 +109,32 @@ client.on("messageCreate", async (message) => {
     return;
   }
 
-  if (message.content === "!clear") {
-    // Supprime tous les salons de Wordle
-    deleteWordleChannel(message.guild!);
+  if (message.author.id === process.env.ADMIN_USER_ID) {
+    if (message.content === "!clearWordle") {
+      // Supprime tous les salons de Wordle
+      deleteWordleChannel(message.guild!);
+      return;
+    }
+    if (message.content === "!chooseWordleWord") {
+      ChooseWordleWord();
+      return;
+    }
+    if (message.content === "!clear") {
+      // Supprime les x derniers message du channel
+      const channel = message.channel;
+      const messages = await channel.messages.fetch({ limit: 1 });
+      const messagesToDeleteCount = messages.size;
+      if (messagesToDeleteCount > 0 && "bulkDelete" in channel) {
+        await channel.bulkDelete(messages);
+      }
+      return;
+    }
   }
-
   if (message.content === "!triggerFreeGame") {
     epicFreeGames();
+    return;
   }
+  checkWordle(message);
 
   const state: State | null = await prisma.state.findFirst({
     where: { guildId: message.guild?.id },
