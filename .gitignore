@@ -9,6 +9,7 @@ dist/
 scripts/
 
 # Prisma
+prisma/olddev.db
 prisma/dev.db
 prisma/dev.db
 prisma/dev.db-journal

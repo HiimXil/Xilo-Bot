@@ -51,15 +51,19 @@ client.once("ready", () => {
     AskQuestion(client);
     epicFreeGames();
     cron.schedule("0 9-23/2 * * *", () => {
-      console.log("⏰ Exécution programmée de epicFreeGames()");
+      console.log("⏰ Exécution programmée de epicFreeGames");
       epicFreeGames();
     });
   } else {
     console.log("Mode développement, pas de question envoyée.");
     epicFreeGames();
-    cron.schedule("0 9 * * *", () => {
-      console.log("⏰ Exécution programmée de ChooseWordleWord()");
+    cron.schedule("0 9 * * *", async () => {
+      console.log("⏰ Exécution programmée du Wordle");
       ChooseWordleWord();
+      const states = await prisma.state.findMany();
+      for (const state of states) {
+        deleteWordleChannel(client.guilds.cache.get(state.guildId)!);
+      }
     });
   }
 });

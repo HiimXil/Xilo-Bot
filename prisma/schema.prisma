@@ -73,7 +73,7 @@ model Wordle {
   guildId      String
   discordId    String
   channel      String?
-  resultSaved  String?
+  resultSaved  String  @default("")
   tryCount     Int     @default(0)
   UserRelation User    @relation(fields: [guildId, discordId], references: [guildId, discordId])
 
@@ -81,6 +81,7 @@ model Wordle {
 }
 
 model WordleWord {
-  id   Int    @id @default(autoincrement())
-  word String
+  id        Int     @id @default(autoincrement())
+  word      String
+  canBeRoll Boolean @default(false)
 }

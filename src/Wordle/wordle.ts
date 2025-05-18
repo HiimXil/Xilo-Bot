@@ -153,7 +153,7 @@ export async function checkWordle(message: Message) {
       message.reply("Vous avez déjà utilisé toutes vos tentatives.");
       return;
     }
-    const wordleMessage = message.content.toLowerCase();
+    const wordleMessage = message.content.toLowerCase().trim();
     if (wordleMessage.length !== wordleWord.length) {
       message.reply(`Le mot doit faire ${wordleWord.length} lettres.`);
       return;
@@ -238,17 +238,19 @@ function toRegionalIndicator(input: string): string {
 
 export async function ChooseWordleWord() {
   // Recupere le nombre de mot dans la base de données
-  const howManyWord = await prisma.wordleWord.count();
+  const wordleWords = await prisma.wordleWord.findMany({
+    select: { id: true, word: true },
+    where: { canBeRoll: true },
+  });
+  const howManyWord = wordleWords.length;
   // Tire un mot au hasard
   const randomIndex = Math.floor(Math.random() * howManyWord);
-  const wordleWord = await prisma.wordleWord.findFirst({
-    skip: randomIndex,
-    take: 1,
-  });
+  const wordleWord = wordleWords[randomIndex];
   if (!wordleWord) {
     Logger.error("Wordle word not found");
     return;
   }
+  console.log("Mot du jour : " + wordleWord.word);
   // Met à jour le mot du jour dans la base de données
   await prisma.state.updateMany({
     data: { wordleWord: wordleWord.word },
