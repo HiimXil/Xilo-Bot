@@ -1,7 +1,7 @@
 import { channel } from "diagnostics_channel";
 import { Logger } from "../Utils/Logger";
 import { prisma } from "../Utils/prisma";
-import type { Configuration, State } from "../Utils/types";
+import type { Configuration, State, Wordle } from "../Utils/types";
 import {
   ChannelType,
   PermissionsBitField,
@@ -134,7 +134,9 @@ export async function checkWordle(message: Message) {
   const wordles = await prisma.wordle.findMany({
     where: { channel: { not: null } },
   });
-  const index = wordles.findIndex((w) => w.channel === message.channel.id);
+  const index = wordles.findIndex(
+    (w: Wordle) => w.channel === message.channel.id
+  );
 
   if (index !== -1) {
     const wordleForUser = wordles[index];

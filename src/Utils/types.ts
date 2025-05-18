@@ -33,3 +33,11 @@ export type State = {
   currentAnswer: string | null;
   answered: boolean;
 };
+
+export type Wordle = {
+  guildId: string;
+  discordId: string;
+  channel: string | null;
+  resultSaved: string | null;
+  tryCount: number;
+};
