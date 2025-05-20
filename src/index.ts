@@ -8,7 +8,7 @@ import CommandHandler from "./interfaces/CommandHandler";
 import {
   checkWordle,
   createWordleChannel,
-  deleteWordleChannel,
+  ResetWordle,
   ChooseWordleWord,
 } from "./Wordle/wordle";
 import { Logger } from "./Utils/Logger";
@@ -54,17 +54,17 @@ client.once("ready", () => {
       console.log("⏰ Exécution programmée de epicFreeGames");
       epicFreeGames();
     });
+    cron.schedule("0 8 * * *", async () => {
+      console.log("⏰ Exécution programmée du Wordle");
+      const states = await prisma.state.findMany();
+      for (const state of states) {
+        ResetWordle(client.guilds.cache.get(state.guildId)!);
+      }
+      ChooseWordleWord();
+    });
   } else {
     console.log("Mode développement, pas de question envoyée.");
     epicFreeGames();
-    cron.schedule("0 9 * * *", async () => {
-      console.log("⏰ Exécution programmée du Wordle");
-      ChooseWordleWord();
-      const states = await prisma.state.findMany();
-      for (const state of states) {
-        deleteWordleChannel(client.guilds.cache.get(state.guildId)!);
-      }
-    });
   }
 });
 
@@ -116,7 +116,7 @@ client.on("messageCreate", async (message) => {
   if (message.author.id === process.env.ADMIN_USER_ID) {
     if (message.content === "!clearWordle") {
       // Supprime tous les salons de Wordle
-      deleteWordleChannel(message.guild!);
+      ResetWordle(message.guild!);
       return;
     }
     if (message.content === "!chooseWordleWord") {

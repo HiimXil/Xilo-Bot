@@ -1,6 +1,7 @@
 import { channel } from "diagnostics_channel";
 import { Logger } from "../Utils/Logger";
 import { prisma } from "../Utils/prisma";
+import { client } from "../Utils/Client";
 import type { Configuration, State, Wordle } from "../Utils/types";
 import {
   ChannelType,
@@ -101,7 +102,7 @@ export async function createWordleChannel(
           `Bienvenue dans le salon de Wordle !\n\nVous pouvez jouer au jeu ici.\n\nVous avez 6 tentatives\n\n
           Mot du jour : ${state.wordleWord?.replace(/./g, "⬜ ")}.`
         )
-        .setColor(0x00ff00)
+        .setColor(0x87e551)
         .setTimestamp();
       newChannel.send({
         content: `<@${user.id}>`,
@@ -111,22 +112,13 @@ export async function createWordleChannel(
   }
 }
 
-export async function deleteWordleChannel(guild: Guild) {
+export async function ResetWordle(guild: Guild) {
   if (!guild) return;
-  Logger.info(`deleteWordleChannel: ${guild.id}`);
-  const wordles = await prisma.wordle.findMany({
-    where: { guildId: guild.id },
-  });
-  for (const wordle of wordles) {
-    const channel = guild.channels.cache.get(wordle.channel!);
-    if (channel) {
-      await channel.delete();
-    }
-  }
+  Logger.info(`ResetWordle: ${guild.id}`);
   // Supprime les salons de Wordle de la base de données
   await prisma.wordle.updateMany({
     where: { guildId: guild.id },
-    data: { channel: null, tryCount: 0, resultSaved: "" },
+    data: { tryCount: 0, resultSaved: "" },
   });
 }
 
@@ -255,4 +247,26 @@ export async function ChooseWordleWord() {
   await prisma.state.updateMany({
     data: { wordleWord: wordleWord.word },
   });
+  const wordleChannel = await prisma.wordle.findMany({
+    where: { channel: { not: null } },
+    select: { channel: true, guildId: true },
+  });
+  // Envoie un message dans chaque salon de Wordle
+  for (const channel of wordleChannel) {
+    const guild = client.guilds.cache.get(channel.guildId);
+    if (!guild) continue;
+
+    if (!channel.channel) continue;
+    const textChannel = guild.channels.cache.get(channel.channel);
+    if (!textChannel || !textChannel.isTextBased()) continue;
+
+    try {
+      await textChannel.send("Nouveau Mots Disponnible !");
+    } catch (error) {
+      console.error(
+        `Erreur lors de l'envoi dans le salon ${channel.channel}:`,
+        error
+      );
+    }
+  }
 }
