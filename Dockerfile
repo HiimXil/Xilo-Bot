@@ -3,8 +3,11 @@ FROM node:current-alpine3.21
 WORKDIR /usr/src/app
 ENV DATABASE_URL="file:./dev.db"
 
+RUN apk add --no-cache \
+    python3 make g++ pkgconfig \
+    cairo-dev pango-dev libpng-dev jpeg-dev giflib-dev pixman-dev
+
 COPY package*.json ./
-RUN apk add --no-cache python3 make g++
 RUN npm ci
 
 COPY . .
