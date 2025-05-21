@@ -140,7 +140,6 @@ export async function checkWordle(message: Message) {
     where: { channel: message.channel.id },
   });
   if (!wordle) {
-    Logger.error("Le channel n'existe pas dans la base de jeu");
     return;
   }
   if (wordle.done !== 0) {
