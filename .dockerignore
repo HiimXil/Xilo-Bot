@@ -6,4 +6,3 @@ Dockerfile
 .gitignore
 README.md
 prisma/.cache
-prisma/dev.db
