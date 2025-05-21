@@ -243,13 +243,19 @@ export async function checkWordle(message: Message) {
 
   const keyStates: Record<string, KeyState> = {
     ...Object.fromEntries(
-      disabled.map((letter) => [letter.toUpperCase(), "disabled"] as const)
+      disabled.map(
+        (letter: string) => [letter.toUpperCase(), "disabled"] as const
+      )
     ),
     ...Object.fromEntries(
-      present.map((letter) => [letter.toUpperCase(), "present"] as const)
+      present.map(
+        (letter: string) => [letter.toUpperCase(), "present"] as const
+      )
     ),
     ...Object.fromEntries(
-      correct.map((letter) => [letter.toUpperCase(), "correct"] as const)
+      correct.map(
+        (letter: string) => [letter.toUpperCase(), "correct"] as const
+      )
     ),
   };
 
