@@ -4,6 +4,7 @@ WORKDIR /usr/src/app
 ENV DATABASE_URL="file:./dev.db"
 
 COPY package*.json ./
+RUN apk add --no-cache python3 make g++
 RUN npm ci
 
 COPY . .
