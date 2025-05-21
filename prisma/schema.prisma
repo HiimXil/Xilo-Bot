@@ -75,6 +75,8 @@ model Wordle {
   channel      String?
   resultSaved  String  @default("")
   tryCount     Int     @default(0)
+  letterUsed   String  @default("")
+  done         Int     @default(0)
   UserRelation User    @relation(fields: [guildId, discordId], references: [guildId, discordId])
 
   @@id([guildId, discordId])

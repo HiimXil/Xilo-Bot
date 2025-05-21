@@ -2,6 +2,7 @@ import { channel } from "diagnostics_channel";
 import { Logger } from "../Utils/Logger";
 import { prisma } from "../Utils/prisma";
 import { client } from "../Utils/Client";
+import { generateKeyboardImage, KeyState } from "./keyboard";
 import type { Configuration, State, Wordle } from "../Utils/types";
 import {
   ChannelType,
@@ -13,6 +14,7 @@ import {
   Guild,
   EmbedBuilder,
   Message,
+  AttachmentBuilder,
 } from "discord.js";
 
 export async function createWordleChannel(
@@ -118,69 +120,150 @@ export async function ResetWordle(guild: Guild) {
   // Supprime les salons de Wordle de la base de données
   await prisma.wordle.updateMany({
     where: { guildId: guild.id },
-    data: { tryCount: 0, resultSaved: "" },
+    data: { tryCount: 0, resultSaved: "", done: 0, letterUsed: "" },
   });
 }
 
 export async function checkWordle(message: Message) {
-  const wordles = await prisma.wordle.findMany({
-    where: { channel: { not: null } },
+  //Check if a word exist
+  const state = await prisma.state.findFirst({
+    where: { guildId: message.guild?.id },
   });
-  const index = wordles.findIndex(
-    (w: Wordle) => w.channel === message.channel.id
-  );
+  if (!state || !state.wordleWord) {
+    Logger.error("State not found or wordleWord is null");
+    return;
+  }
+  const wordleWord = state.wordleWord.toLowerCase();
 
-  if (index !== -1) {
-    const wordleForUser = wordles[index];
-    const state = await prisma.state.findFirst({
-      where: { guildId: message.guild?.id },
-    });
-    if (!state || !state.wordleWord) {
-      Logger.error("State not found or wordleWord is null");
-      return;
-    }
-    const wordleWord = state.wordleWord.toLowerCase();
-    const wordleTryCount = wordleForUser.tryCount;
-    if (wordleTryCount >= 6) {
-      message.reply("Vous avez déjà utilisé toutes vos tentatives.");
-      return;
-    }
-    const wordleMessage = message.content.toLowerCase().trim();
-    if (wordleMessage.length !== wordleWord.length) {
-      message.reply(`Le mot doit faire ${wordleWord.length} lettres.`);
-      return;
-    }
-
-    const wordleWordInEmoji = toRegionalIndicator(
-      message.content.toLowerCase()
+  //Get the player information
+  const wordle = await prisma.wordle.findFirst({
+    where: { channel: message.channel.id },
+  });
+  if (!wordle) {
+    Logger.error("Le channel n'existe pas dans la base de jeu");
+    return;
+  }
+  if (wordle.done !== 0) {
+    //TODO : Use discord way to indicate time "in 10 mins"
+    message.reply(
+      "Vous avez déjà jouer aujourd'hui. Merci d'attendre demain pour le nouveau mot!"
     );
-    //vérifie si le mot est valide A IMPLEMENTER
-    const wordInWordList = await prisma.wordleWord.findFirst({
-      where: { word: wordleMessage.toUpperCase() },
-    });
-    if (!wordInWordList) {
-      message.reply("Ce mot n'est pas valide.");
-      return;
-    }
+    return;
+  }
 
-    let result = Array(wordleWord.length).fill("🟥");
-    const letterCount: Record<string, number> = {};
-    for (let i = 0; i < wordleMessage.length; i++) {
-      if (wordleMessage[i] === wordleWord[i]) {
-        result[i] = "🟩";
-      } else {
-        letterCount[wordleWord[i]] = (letterCount[wordleWord[i]] || 0) + 1;
+  const wordleMessage = message.content.toLowerCase().trim();
+  if (wordleMessage.length !== wordleWord.length) {
+    message.reply(`Le mot doit faire ${wordleWord.length} lettres.`);
+    return;
+  }
+
+  const wordleWordInEmoji = toRegionalIndicator(message.content.toLowerCase());
+  const wordInWordList = await prisma.wordleWord.findFirst({
+    where: { word: wordleMessage.toUpperCase() },
+  });
+  if (!wordInWordList) {
+    message.reply("Ce mot n'est pas valide.");
+    return;
+  }
+  let wordleUsedLetter = wordle.letterUsed;
+  if (wordleUsedLetter === "") {
+    wordleUsedLetter = "||";
+  }
+  //0 = Good letter Good Placement 1 = Good letter Bad Placement 2 = Bad Letter Bad Placement
+  const LetterUsedArray = wordleUsedLetter.split("|");
+
+  let result = Array(wordleWord.length).fill("🟥");
+  const letterCount: Record<string, number> = {};
+  for (let i = 0; i < wordleMessage.length; i++) {
+    if (wordleMessage[i] === wordleWord[i]) {
+      result[i] = "🟩";
+      if (!LetterUsedArray[0].includes(wordleMessage[i])) {
+        LetterUsedArray[0] += wordleMessage[i];
+      }
+    } else {
+      letterCount[wordleWord[i]] = (letterCount[wordleWord[i]] || 0) + 1;
+    }
+  }
+
+  for (let i = 0; i < wordleMessage.length; i++) {
+    if (result[i] !== "🟩" && letterCount[wordleMessage[i]] > 0) {
+      result[i] = "🟨";
+      letterCount[wordleMessage[i]]--;
+      if (
+        !LetterUsedArray[0].includes(wordleMessage[i]) &&
+        !LetterUsedArray[1].includes(wordleMessage[i])
+      ) {
+        LetterUsedArray[1] += wordleMessage[i];
       }
     }
-
-    for (let i = 0; i < wordleMessage.length; i++) {
-      if (result[i] !== "🟩" && letterCount[wordleMessage[i]] > 0) {
-        result[i] = "🟨";
-        letterCount[wordleMessage[i]]--;
-      }
+  }
+  for (let i = 0; i < wordleMessage.length; i++) {
+    if (
+      !LetterUsedArray[0].includes(wordleMessage[i]) &&
+      !LetterUsedArray[1].includes(wordleMessage[i]) &&
+      !LetterUsedArray[2].includes(wordleMessage[i])
+    ) {
+      LetterUsedArray[2] += wordleMessage[i];
     }
-    const resultString = result.join(" ");
+  }
+  wordleUsedLetter = LetterUsedArray.join("|");
+  const resultString = result.join(" ");
 
+  await prisma.wordle.update({
+    where: {
+      guildId_discordId: {
+        guildId: message.guild!.id,
+        discordId: message.author.id,
+      },
+    },
+    data: {
+      letterUsed: wordleUsedLetter,
+    },
+  });
+
+  const wordleTryCount = wordle.tryCount;
+
+  await prisma.wordle.update({
+    where: {
+      guildId_discordId: {
+        guildId: message.guild!.id,
+        discordId: message.author.id,
+      },
+    },
+    data: {
+      tryCount: wordleTryCount + 1,
+      resultSaved:
+        wordle.resultSaved + wordleWordInEmoji + "\n" + resultString + "\n",
+    },
+  });
+
+  const disabled = LetterUsedArray[2].split("");
+  const present = LetterUsedArray[1].split("");
+  const correct = LetterUsedArray[0].split("");
+
+  const keyStates: Record<string, KeyState> = {
+    ...Object.fromEntries(
+      disabled.map((letter) => [letter.toUpperCase(), "disabled"] as const)
+    ),
+    ...Object.fromEntries(
+      present.map((letter) => [letter.toUpperCase(), "present"] as const)
+    ),
+    ...Object.fromEntries(
+      correct.map((letter) => [letter.toUpperCase(), "correct"] as const)
+    ),
+  };
+
+  const buffer = generateKeyboardImage({ keyStates });
+  const attachment = new AttachmentBuilder(buffer, { name: "keyboard.png" });
+
+  message.reply({
+    content: `**Essai ${wordleTryCount + 1}** :\n${
+      wordle.resultSaved
+    }${wordleWordInEmoji}\n${resultString}`,
+    files: [attachment],
+  });
+
+  if (wordleMessage === wordleWord) {
     await prisma.wordle.update({
       where: {
         guildId_discordId: {
@@ -189,29 +272,28 @@ export async function checkWordle(message: Message) {
         },
       },
       data: {
-        tryCount: wordleTryCount + 1,
-        resultSaved:
-          wordleForUser.resultSaved +
-          wordleWordInEmoji +
-          "\n" +
-          resultString +
-          "\n",
+        done: 2,
       },
     });
-    if (wordleTryCount + 1 >= 6) {
-      message.reply(
-        `Vous avez utilisé toutes vos tentatives ! Le mot était **${wordleWord}**.`
-      );
-    }
+    message.reply(`🎉 Vous avez trouvé le mot du jour !`);
+    return;
+  }
+
+  if (wordleTryCount + 1 >= 6) {
+    await prisma.wordle.update({
+      where: {
+        guildId_discordId: {
+          guildId: message.guild!.id,
+          discordId: message.author.id,
+        },
+      },
+      data: {
+        done: 1,
+      },
+    });
     message.reply(
-      `**Essai ${wordleTryCount + 1}** :\n${
-        wordleForUser.resultSaved
-      }${wordleWordInEmoji}\n${resultString}`
+      `Vous avez utilisé toutes vos tentatives ! Le mot était **${wordleWord}**.`
     );
-    if (wordleMessage === wordleWord) {
-      message.reply(`🎉 Vous avez trouvé le mot du jour !`);
-      return;
-    }
   }
 }
 
