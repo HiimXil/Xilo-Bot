@@ -348,7 +348,11 @@ export async function ChooseWordleWord() {
     if (!textChannel || !textChannel.isTextBased()) continue;
 
     try {
-      await textChannel.send("Nouveau Mot Disponible !");
+      await textChannel.send(
+        "Nouveau Mot Disponible ! Le mot fait " +
+          wordleWord.word.length +
+          " lettres"
+      );
     } catch (error) {
       console.error(
         `Erreur lors de l'envoi dans le salon ${channel.channel}:`,
