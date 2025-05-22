@@ -348,7 +348,7 @@ export async function ChooseWordleWord() {
     if (!textChannel || !textChannel.isTextBased()) continue;
 
     try {
-      await textChannel.send("Nouveau Mots Disponible !");
+      await textChannel.send("Nouveau Mot Disponible !");
     } catch (error) {
       console.error(
         `Erreur lors de l'envoi dans le salon ${channel.channel}:`,

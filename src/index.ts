@@ -27,6 +27,7 @@ import select_quiz_channel from "./Commands/select_quiz_channel";
 import select_quiz_role from "./Commands/select_quiz_role";
 import setup_wordle from "./Commands/setup_wordle";
 import setup_freegame from "./Commands/setup_freegame";
+import share_wordle from "./Commands/share_wordle";
 
 dotenv.config({ path: resolve(__dirname, "../.env") });
 
@@ -42,6 +43,7 @@ commandHandler.addCommand(select_quiz_channel);
 commandHandler.addCommand(select_quiz_role);
 commandHandler.addCommand(setup_wordle);
 commandHandler.addCommand(setup_freegame);
+commandHandler.addCommand(share_wordle);
 
 // Demarrage du bot
 client.once("ready", () => {
