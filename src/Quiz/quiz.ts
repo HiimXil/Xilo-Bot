@@ -131,12 +131,12 @@ export async function AskQuestion(client: Client) {
           if (channel && channel.isTextBased() && "send" in channel) {
             if (conf.quizRoleId) {
               channel.send(
-                `❓ **Question** dans 15 secondes <@&${conf.quizRoleId}>`
+                `:grey_question: **Question** dans 15 secondes <@&${conf.quizRoleId}>`
               );
               await new Promise((resolve) => setTimeout(resolve, 15000));
               channel.send(`❓ **Question** : ${questionText}`);
             } else {
-              channel.send(`❓ **Question** dans 15 secondes`);
+              channel.send(`:grey_question: **Question** dans 15 secondes`);
               await new Promise((resolve) => setTimeout(resolve, 15000));
               channel.send(`❓ **Question** : ${questionText}`);
             }
@@ -152,12 +152,12 @@ export async function AskQuestion(client: Client) {
           if (channel && channel.isTextBased() && "send" in channel) {
             if (conf.quizRoleId) {
               channel.send(
-                `❓ **Question** dans 15 secondes <@&${conf.quizRoleId}>`
+                `:grey_question: **Question** dans 15 secondes <@&${conf.quizRoleId}>`
               );
               await new Promise((resolve) => setTimeout(resolve, 15000));
               channel.send(`❓ **Question** : ${state.currentQuestion}`);
             } else {
-              channel.send(`❓ **Question** dans 15 secondes`);
+              channel.send(`:grey_question: **Question** dans 15 secondes`);
               await new Promise((resolve) => setTimeout(resolve, 15000));
               channel.send(`❓ **Question** : ${state.currentQuestion}`);
             }

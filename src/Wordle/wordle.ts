@@ -283,7 +283,24 @@ export async function checkWordle(message: Message) {
         done: 2,
       },
     });
-    message.reply(`🎉 Vous avez trouvé le mot du jour !`);
+    message.reply(
+      `🎉 Vous avez trouvé le mot du jour ! Vous avez gagné ${
+        7 - (wordleTryCount + 1)
+      } point(s)`
+    );
+    await prisma.user.update({
+      where: {
+        guildId_discordId: {
+          guildId: message.guild!.id,
+          discordId: message.author.id,
+        },
+      },
+      data: {
+        score: {
+          increment: 7 - (wordleTryCount + 1),
+        },
+      },
+    });
     return;
   }
 
@@ -302,6 +319,7 @@ export async function checkWordle(message: Message) {
     message.reply(
       `Vous avez utilisé toutes vos tentatives ! Le mot était **${wordleWord}**.`
     );
+    return;
   }
 }
 
