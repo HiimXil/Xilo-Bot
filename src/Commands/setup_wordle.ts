@@ -1,4 +1,10 @@
-import { SlashCommandBuilder, type CommandInteraction } from "discord.js";
+import {
+  SlashCommandBuilder,
+  type CommandInteraction,
+  ButtonBuilder,
+  ButtonStyle,
+  ActionRowBuilder,
+} from "discord.js";
 import type Command from "../interfaces/Command";
 import { prisma } from "../Utils/prisma";
 
@@ -20,10 +26,18 @@ const command: Command = {
     }
     const channel = interaction.channel;
     if (channel?.isTextBased() && "send" in channel && "parentId" in channel) {
-      const message = channel.send(
-        'React to this message with the emoji "🌍" to play Wordle!'
-      );
-      (await message).react("🌍");
+      const bouton = new ButtonBuilder()
+        .setCustomId("CreateChannelWordle")
+        .setLabel("Jouer")
+        .setStyle(ButtonStyle.Primary);
+
+      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(bouton);
+
+      const message = await channel.send({
+        content: "Utiliser le bouton ci-dessous pour jouer au Wordle!",
+        components: [row],
+      });
+
       const categoryId = channel.parentId;
       await prisma.configuration.upsert({
         where: { guildId: interaction.guild.id },

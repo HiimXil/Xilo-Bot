@@ -7,111 +7,114 @@ import type { Configuration, State, Wordle } from "../Utils/types";
 import {
   ChannelType,
   PermissionsBitField,
-  MessageReaction,
-  PartialMessageReaction,
-  User,
-  PartialUser,
+  ButtonInteraction,
   Guild,
   EmbedBuilder,
   Message,
   AttachmentBuilder,
 } from "discord.js";
 
-export async function createWordleChannel(
-  reaction: MessageReaction | PartialMessageReaction,
-  user: User | PartialUser
-) {
-  const config: Configuration | null = await prisma.configuration.findFirst({
-    where: { guildId: reaction.message.guild?.id },
-  });
-  if (!config) return;
-  if (!config.wordleMessageId) return;
-  if (reaction.message.id === config.wordleMessageId) {
-    if (reaction.emoji.name === "🌍") {
-      Logger.info("createWordleChannel: " + user.id);
-      // Vérifie si le salon existe déjà
-      const wordle = await prisma.wordle.findFirst({
-        where: {
-          guildId: reaction.message.guild?.id,
-          discordId: reaction.users.cache.get(user.id)?.id,
-        },
-      });
-      if (wordle && wordle.channel !== "" && wordle.channel !== null) return;
-      //Create a new channel private for the user
-      const newChannel = await reaction.message.guild?.channels.create({
-        name: `wordle-${user.username}`,
-        type: ChannelType.GuildText,
-        parent: config.wordleCategoryId,
-        permissionOverwrites: [
-          {
-            id: reaction.message.guild.id, // everyone
-            deny: [PermissionsBitField.Flags.ViewChannel],
-          },
-          {
-            id: user.id, // l'utilisateur
-            allow: ["ViewChannel"],
-          },
-          {
-            id: process.env.CLIENT_ID!, // le bot
-            allow: ["ViewChannel"],
-          },
-        ],
-      });
-      if (!newChannel) return;
-      await prisma.user.upsert({
-        where: {
-          guildId_discordId: {
-            guildId: reaction.message.guild!.id,
-            discordId: user.id,
-          },
-        },
-        update: {
-          username: user.username,
-        },
-        create: {
-          discordId: user.id,
-          username: user.username,
-          guildId: reaction.message.guild!.id,
-        },
-      });
+export async function createWordleChannel(interaction: ButtonInteraction) {
+  const guild = interaction.guild;
+  if (!guild) return;
 
-      await prisma.wordle.upsert({
-        where: {
-          guildId_discordId: {
-            guildId: reaction.message.guild!.id,
-            discordId: user.id,
-          },
-        },
-        update: {
-          channel: newChannel.id,
-        },
-        create: {
-          guildId: reaction.message.guild!.id,
-          discordId: user.id,
-          channel: newChannel.id,
-        },
-      });
-      const state = await prisma.state.findFirst({
-        where: { guildId: reaction.message.guild?.id },
-      });
-      if (!state) {
-        Logger.error("State not found");
-        return;
-      }
-      const embed = new EmbedBuilder()
-        .setTitle("Wordle")
-        .setDescription(
-          `Bienvenue dans le salon de Wordle !\n\nVous pouvez jouer au jeu ici.\n\nVous avez 6 tentatives\n\n
-          Mot du jour : ${state.wordleWord?.replace(/./g, "⬜ ")}.`
-        )
-        .setColor(0x87e551)
-        .setTimestamp();
-      newChannel.send({
-        content: `<@${user.id}>`,
-        embeds: [embed],
-      });
-    }
+  const config = await prisma.configuration.findFirst({
+    where: { guildId: guild.id },
+  });
+  if (!config || !config.wordleMessageId) return;
+  if (interaction.customId !== "CreateChannelWordle") return;
+
+  const wordle = await prisma.wordle.findFirst({
+    where: {
+      guildId: guild.id,
+      discordId: interaction.user.id,
+    },
+  });
+  if (wordle?.channel) return;
+  const newChannel = await guild.channels.create({
+    name: `wordle-${interaction.user.username}`,
+    type: ChannelType.GuildText,
+    parent: config.wordleCategoryId,
+    permissionOverwrites: [
+      {
+        id: guild.id,
+        deny: [PermissionsBitField.Flags.ViewChannel],
+      },
+      {
+        id: interaction.user.id,
+        allow: [PermissionsBitField.Flags.ViewChannel],
+      },
+      {
+        id: process.env.CLIENT_ID!,
+        allow: [PermissionsBitField.Flags.ViewChannel],
+      },
+    ],
+  });
+  if (!newChannel) return;
+
+  Logger.info("Nouveau channel crée");
+  await prisma.user.upsert({
+    where: {
+      guildId_discordId: {
+        guildId: guild.id,
+        discordId: interaction.user.id,
+      },
+    },
+    update: {
+      username: interaction.user.username,
+    },
+    create: {
+      discordId: interaction.user.id,
+      username: interaction.user.username,
+      guildId: guild.id,
+    },
+  });
+
+  await prisma.wordle.upsert({
+    where: {
+      guildId_discordId: {
+        guildId: guild.id,
+        discordId: interaction.user.id,
+      },
+    },
+    update: {
+      channel: newChannel.id,
+    },
+    create: {
+      guildId: guild.id,
+      discordId: interaction.user.id,
+      channel: newChannel.id,
+    },
+  });
+
+  const state = await prisma.state.findFirst({
+    where: { guildId: guild.id },
+  });
+  if (!state) {
+    Logger.error("State not found");
+    return;
   }
+
+  const embed = new EmbedBuilder()
+    .setTitle("Wordle")
+    .setDescription(
+      `Bienvenue dans le salon de Wordle !\n\nVous pouvez jouer au jeu ici.\n\nVous avez 6 tentatives\n\nMot du jour : ${state.wordleWord?.replace(
+        /./g,
+        "⬜ "
+      )}`
+    )
+    .setColor(0x87e551)
+    .setTimestamp();
+
+  newChannel.send({
+    content: `<@${interaction.user.id}>`,
+    embeds: [embed],
+  });
+
+  await interaction.reply({
+    content: "Votre salon Wordle a été créé.",
+    ephemeral: true,
+  });
 }
 
 export async function ResetWordle(guild: Guild) {
@@ -262,7 +265,7 @@ export async function checkWordle(message: Message) {
   const attachment = new AttachmentBuilder(buffer, { name: "keyboard.png" });
 
   message.reply({
-    content: `**Essai ${wordleTryCount + 1}** :\n${
+    content: `**Essai ${wordleTryCount + 1}/6** :\n${
       wordle.resultSaved
     }${wordleWordInEmoji}\n${resultString}`,
     files: [attachment],

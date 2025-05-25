@@ -72,38 +72,31 @@ client.once("ready", () => {
 
 // Action autour des interactions
 client.on("interactionCreate", async (interaction) => {
-  if (!interaction.isChatInputCommand()) return;
-  const command = commandHandler.getCommand(interaction.commandName);
-  if (!command) {
-    await interaction.reply({
-      content: "❌ Commande introuvable.",
-      ephemeral: true,
-    });
-    return;
-  }
-  try {
-    await command.execute(interaction);
-  } catch (error) {
-    console.error("Erreur lors de l'exécution de la commande : ", error);
-    await interaction.reply({
-      content: "❌ Une erreur est survenue lors de l'exécution de la commande.",
-      ephemeral: true,
-    });
-  }
-});
-
-client.on("messageReactionAdd", async (reaction, user) => {
-  if (user.bot) return;
-  // Si la réaction est partielle, on la récupère
-  if (reaction.partial) {
-    try {
-      await reaction.fetch();
-    } catch (error) {
-      Logger.error("Erreur lors du fetch de la réaction : " + error);
-      return;
+  if (interaction.isButton()) {
+    if (interaction.customId === "CreateChannelWordle") {
+      createWordleChannel(interaction);
     }
   }
-  createWordleChannel(reaction, user);
+  if (interaction.isChatInputCommand()) {
+    const command = commandHandler.getCommand(interaction.commandName);
+    if (!command) {
+      await interaction.reply({
+        content: "❌ Commande introuvable.",
+        ephemeral: true,
+      });
+      return;
+    }
+    try {
+      await command.execute(interaction);
+    } catch (error) {
+      console.error("Erreur lors de l'exécution de la commande : ", error);
+      await interaction.reply({
+        content:
+          "❌ Une erreur est survenue lors de l'exécution de la commande.",
+        ephemeral: true,
+      });
+    }
+  }
 });
 
 // Action autour des messages

@@ -43,7 +43,7 @@ const command: Command = {
       finalResult += userResult[i] + "\n";
     }
     interaction.reply({
-      content: finalResult,
+      content: "Wordle en " + wordle.tryCount + " essais\n" + finalResult,
     });
   },
 };

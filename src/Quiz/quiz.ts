@@ -126,19 +126,22 @@ export async function AskQuestion(client: Client) {
               answered: false,
             },
           });
+
           const channel = client.channels.cache.get(conf.quizChannelId);
-          if (
-            channel &&
-            channel.isTextBased() &&
-            "send" in channel &&
-            conf.quizRoleId
-          ) {
-            channel.send(
-              `❓ **Question** : ${questionText} <@&${conf.quizRoleId}>`
-            );
-          } else if (channel && channel.isTextBased() && "send" in channel) {
-            channel.send(`❓ **Question** : ${questionText}`);
+          if (channel && channel.isTextBased() && "send" in channel) {
+            if (conf.quizRoleId) {
+              channel.send(
+                `❓ **Question** dans 15 secondes <@&${conf.quizRoleId}>`
+              );
+              await new Promise((resolve) => setTimeout(resolve, 15000));
+              channel.send(`❓ **Question** : ${questionText}`);
+            } else {
+              channel.send(`❓ **Question** dans 15 secondes`);
+              await new Promise((resolve) => setTimeout(resolve, 15000));
+              channel.send(`❓ **Question** : ${questionText}`);
+            }
           }
+          return;
         }
         // Si la question a déjà été posée et que la réponse n'a pas été donnée
         else if (state.answered === false) {
@@ -149,12 +152,17 @@ export async function AskQuestion(client: Client) {
           if (channel && channel.isTextBased() && "send" in channel) {
             if (conf.quizRoleId) {
               channel.send(
-                `❓ **Question** : ${state.currentQuestion} <@&${conf.quizRoleId}>`
+                `❓ **Question** dans 15 secondes <@&${conf.quizRoleId}>`
               );
+              await new Promise((resolve) => setTimeout(resolve, 15000));
+              channel.send(`❓ **Question** : ${state.currentQuestion}`);
             } else {
+              channel.send(`❓ **Question** dans 15 secondes`);
+              await new Promise((resolve) => setTimeout(resolve, 15000));
               channel.send(`❓ **Question** : ${state.currentQuestion}`);
             }
           }
+          return;
         }
       });
     });
