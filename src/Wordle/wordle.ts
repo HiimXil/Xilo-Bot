@@ -136,7 +136,7 @@ export async function checkWordle(message: Message) {
     Logger.error("State not found or wordleWord is null");
     return;
   }
-  const wordleWord = state.wordleWord.toLowerCase();
+  const wordleWord = state.wordleWord;
 
   //Get the player information
   const wordle = await prisma.wordle.findFirst({
@@ -153,7 +153,8 @@ export async function checkWordle(message: Message) {
     return;
   }
 
-  const wordleMessage = message.content.toLowerCase().trim();
+  const wordleMessage = formatWord(message.cleanContent);
+
   if (wordleMessage.length !== wordleWord.length) {
     message.reply(`Le mot doit faire ${wordleWord.length} lettres.`);
     return;
@@ -161,7 +162,7 @@ export async function checkWordle(message: Message) {
 
   const wordleWordInEmoji = toRegionalIndicator(message.content.toLowerCase());
   const wordInWordList = await prisma.wordleWord.findFirst({
-    where: { word: wordleMessage.toUpperCase() },
+    where: { word: wordleMessage },
   });
   if (!wordInWordList) {
     message.reply("Ce mot n'est pas valide.");
@@ -381,4 +382,16 @@ export async function ChooseWordleWord() {
       );
     }
   }
+}
+
+function formatWord(s: string): string {
+    return s.toUpperCase()
+            .trim()
+            .replace('É', 'E')
+            .replace('È', 'E')
+            .replace('Ê', 'E')
+            .replace('À', 'A')
+            .replace('Â', 'A')
+            .replace('Î', 'I')
+            .replace('Û', 'U');
 }
