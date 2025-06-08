@@ -21,6 +21,7 @@ export type Weight = {
 export type Configuration = {
   guildId: string;
   quizChannelId: string | null;
+  quizSugestChannelId: string | null;
   quizRoleId: string | null;
   wordleCategoryId: string | null;
   wordleRoleId: string | null;

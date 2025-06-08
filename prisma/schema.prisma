@@ -31,6 +31,14 @@ model Question {
   Weight      Weight[]
 }
 
+model SuggestedQuestion {
+  id          Int    @id @default(autoincrement())
+  text        String
+  answer      String
+  description String
+  username    String
+}
+
 model Weight {
   questionId       Int
   guildId          String
@@ -42,14 +50,15 @@ model Weight {
 }
 
 model Configuration {
-  guildId           String  @id
-  quizChannelId     String?
-  quizRoleId        String?
-  wordleCategoryId  String?
-  wordleRoleId      String?
-  wordleMessageId   String?
-  freeGameChannelId String?
-  freeGameRoleId    String?
+  guildId             String  @id
+  quizChannelId       String?
+  quizRoleId          String?
+  quizSugestChannelId String?
+  wordleCategoryId    String?
+  wordleRoleId        String?
+  wordleMessageId     String?
+  freeGameChannelId   String?
+  freeGameRoleId      String?
 }
 
 model State {

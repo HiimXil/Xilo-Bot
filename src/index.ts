@@ -4,6 +4,7 @@ import { prisma } from "./Utils/prisma";
 import type { Configuration, State } from "./Utils/types";
 import { AskQuestion, validAnswer } from "./Quiz/quiz";
 import { client } from "./Utils/Client";
+import { handleNonOfficialCommand } from "./Utils/nonOfficialCommand";
 import CommandHandler from "./interfaces/CommandHandler";
 import {
   checkWordle,
@@ -16,7 +17,7 @@ import { epicFreeGames } from "./EpicGames/epicFreeGames";
 import cron from "node-cron";
 
 // Importation des commandes
-import add_question from "./Commands/add_question";
+import sugest_question from "./Commands/sugest_question";
 import hint from "./Commands/hint";
 import trigger from "./Commands/trigger";
 import explain from "./Commands/explain";
@@ -28,11 +29,12 @@ import select_quiz_role from "./Commands/select_quiz_role";
 import setup_wordle from "./Commands/setup_wordle";
 import setup_freegame from "./Commands/setup_freegame";
 import share_wordle from "./Commands/share_wordle";
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 
 dotenv.config({ path: resolve(__dirname, "../.env") });
 
 const commandHandler = new CommandHandler();
-commandHandler.addCommand(add_question);
+commandHandler.addCommand(sugest_question);
 commandHandler.addCommand(hint);
 commandHandler.addCommand(trigger);
 commandHandler.addCommand(explain);
@@ -72,9 +74,98 @@ client.once("ready", () => {
 
 // Action autour des interactions
 client.on("interactionCreate", async (interaction) => {
+  if (interaction.isModalSubmit()) {
+    if (interaction.customId === "add_question") {
+      const question = interaction.fields.getTextInputValue("question");
+      const answer = interaction.fields.getTextInputValue("answer");
+      const description = interaction.fields.getTextInputValue("description");
+
+      if (!interaction.guild) {
+        await interaction.reply({
+          content: "❌ Cette commande ne peut pas être utilisée ici.",
+          ephemeral: true,
+        });
+        return;
+      }
+      // Envoie la question dans un channel dédié
+      await prisma.configuration
+        .findFirst({
+          where: { guildId: interaction.guild.id },
+        })
+        .then(async (conf: Configuration | null) => {
+          if (!conf || !conf.quizSugestChannelId) {
+            await interaction.reply({
+              content: "❌ Le channel de suggestion n'est pas configuré.",
+              ephemeral: true,
+            });
+            return;
+          }
+          const channel = client.channels.cache.get(conf.quizSugestChannelId);
+          if (channel && channel.isTextBased() && "send" in channel) {
+            const suggestQuestion = await prisma.suggestedQuestion.create({
+              data: {
+                text: question,
+                answer,
+                description,
+                username: interaction.user.id,
+              },
+            });
+
+            const bouton = new ButtonBuilder()
+              .setCustomId("add_question_to_quiz:" + suggestQuestion.id)
+              .setLabel("Ajouter au quiz")
+              .setStyle(ButtonStyle.Primary);
+
+            const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+              bouton
+            );
+
+            await channel.send({
+              content: `Nouvelle question proposée par <@${interaction.user.id}> :\n**Question** : ${question}\n**Réponse** : ${answer}\n**Description** : ${description}`,
+              allowedMentions: { users: [] },
+              components: [row],
+            });
+            await interaction.reply({
+              content: "✅ Question proposée avec succès.",
+              ephemeral: true,
+            });
+          } else {
+            await interaction.reply({
+              content: "❌ Le channel de quiz n'est pas accessible.",
+              ephemeral: true,
+            });
+          }
+        });
+    }
+  }
   if (interaction.isButton()) {
     if (interaction.customId === "CreateChannelWordle") {
       createWordleChannel(interaction);
+    }
+    if (interaction.customId.startsWith("add_question_to_quiz:")) {
+      const questionId = Number(interaction.customId.split(":")[1]);
+      const question = await prisma.suggestedQuestion.findUnique({
+        where: { id: questionId },
+      });
+      if (!question) {
+        await interaction.reply({
+          content: "❌ Question introuvable.",
+          ephemeral: true,
+        });
+        return;
+      }
+      // Ajoute la question au quiz
+      await prisma.question.create({
+        data: {
+          text: question.text,
+          answer: question.answer,
+          description: question.description,
+        },
+      });
+      await interaction.reply({
+        content: "✅ Question ajoutée au quiz avec succès.",
+        ephemeral: true,
+      });
     }
   }
   if (interaction.isChatInputCommand()) {
@@ -103,51 +194,31 @@ client.on("interactionCreate", async (interaction) => {
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
 
-  if (message.content === "!ping") {
-    message.reply("Pong !");
-    return;
-  }
-
-  if (message.author.id === process.env.ADMIN_USER_ID) {
-    if (message.content === "!clearWordle") {
-      // Supprime tous les salons de Wordle
-      ResetWordle(message.guild!);
-      return;
-    }
-    if (message.content === "!chooseWordleWord") {
-      ChooseWordleWord();
-      return;
-    }
-    if (message.content === "!clear") {
-      // Supprime les x derniers message du channel
-      const channel = message.channel;
-      const messages = await channel.messages.fetch({ limit: 1 });
-      const messagesToDeleteCount = messages.size;
-      if (messagesToDeleteCount > 0 && "bulkDelete" in channel) {
-        await channel.bulkDelete(messages);
-      }
-      return;
-    }
-  }
-  if (message.content === "!triggerFreeGame") {
-    epicFreeGames();
-    return;
-  }
+  await handleNonOfficialCommand(message);
   checkWordle(message);
 
   const state: State | null = await prisma.state.findFirst({
     where: { guildId: message.guild?.id },
   });
   // Vérifie réponse au quiz
-  if (
-    state?.currentAnswer &&
-    message.content
-      .toLowerCase()
-      .replace(",", ".")
-      .includes(state.currentAnswer) &&
-    !state?.answered
-  ) {
-    validAnswer(message, client);
+  if (state?.currentAnswer && !state?.answered) {
+    const parts = state?.currentAnswer!.split(/\s+/).map((part, i) => {
+      // si la réponse est un nombre
+      if (i === 0 && part.startsWith("-")) {
+        const word = part.slice(1); // sans le -
+        return `-\\b${word}\\b`;
+      } else if (/^\d+(\.\d+)?$/.test(part)) {
+        return `(?<!-)\\b${part}\\b`;
+      }
+      return `\\b${part}\\b`;
+    });
+
+    const pattern = parts.join("\\s+");
+    const regex = new RegExp(pattern, "u");
+    console.log(regex);
+    if (regex.test(message.content.replace(",", "."))) {
+      validAnswer(message, client);
+    }
   }
 });
 
