@@ -216,7 +216,7 @@ client.on("messageCreate", async (message) => {
     const pattern = parts.join("\\s+");
     const regex = new RegExp(pattern, "u");
     console.log(regex);
-    if (regex.test(message.content.replace(",", "."))) {
+    if (regex.test(message.content.replace(",", ".").toLowerCase())) {
       validAnswer(message, client);
     }
   }
