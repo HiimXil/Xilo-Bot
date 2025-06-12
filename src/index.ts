@@ -2,7 +2,12 @@ import dotenv from "dotenv";
 import { resolve } from "path";
 import { prisma } from "./Utils/prisma";
 import type { Configuration, State } from "./Utils/types";
-import { AskQuestion, validAnswer } from "./Quiz/quiz";
+import {
+  AskQuestion,
+  validAnswer,
+  SugestQuestion,
+  addQuestionToQuiz,
+} from "./Quiz/quiz";
 import { client } from "./Utils/Client";
 import { handleNonOfficialCommand } from "./Utils/nonOfficialCommand";
 import CommandHandler from "./interfaces/CommandHandler";
@@ -76,66 +81,7 @@ client.once("ready", () => {
 client.on("interactionCreate", async (interaction) => {
   if (interaction.isModalSubmit()) {
     if (interaction.customId === "add_question") {
-      const question = interaction.fields.getTextInputValue("question");
-      const answer = interaction.fields.getTextInputValue("answer");
-      const description = interaction.fields.getTextInputValue("description");
-
-      if (!interaction.guild) {
-        await interaction.reply({
-          content: "❌ Cette commande ne peut pas être utilisée ici.",
-          ephemeral: true,
-        });
-        return;
-      }
-      // Envoie la question dans un channel dédié
-      await prisma.configuration
-        .findFirst({
-          where: { guildId: interaction.guild.id },
-        })
-        .then(async (conf: Configuration | null) => {
-          if (!conf || !conf.quizSugestChannelId) {
-            await interaction.reply({
-              content: "❌ Le channel de suggestion n'est pas configuré.",
-              ephemeral: true,
-            });
-            return;
-          }
-          const channel = client.channels.cache.get(conf.quizSugestChannelId);
-          if (channel && channel.isTextBased() && "send" in channel) {
-            const suggestQuestion = await prisma.suggestedQuestion.create({
-              data: {
-                text: question,
-                answer,
-                description,
-                username: interaction.user.id,
-              },
-            });
-
-            const bouton = new ButtonBuilder()
-              .setCustomId("add_question_to_quiz:" + suggestQuestion.id)
-              .setLabel("Ajouter au quiz")
-              .setStyle(ButtonStyle.Primary);
-
-            const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-              bouton
-            );
-
-            await channel.send({
-              content: `Nouvelle question proposée par <@${interaction.user.id}> :\n**Question** : ${question}\n**Réponse** : ${answer}\n**Description** : ${description}`,
-              allowedMentions: { users: [] },
-              components: [row],
-            });
-            await interaction.reply({
-              content: "✅ Question proposée avec succès.",
-              ephemeral: true,
-            });
-          } else {
-            await interaction.reply({
-              content: "❌ Le channel de quiz n'est pas accessible.",
-              ephemeral: true,
-            });
-          }
-        });
+      await SugestQuestion(interaction, client);
     }
   }
   if (interaction.isButton()) {
@@ -143,29 +89,7 @@ client.on("interactionCreate", async (interaction) => {
       createWordleChannel(interaction);
     }
     if (interaction.customId.startsWith("add_question_to_quiz:")) {
-      const questionId = Number(interaction.customId.split(":")[1]);
-      const question = await prisma.suggestedQuestion.findUnique({
-        where: { id: questionId },
-      });
-      if (!question) {
-        await interaction.reply({
-          content: "❌ Question introuvable.",
-          ephemeral: true,
-        });
-        return;
-      }
-      // Ajoute la question au quiz
-      await prisma.question.create({
-        data: {
-          text: question.text,
-          answer: question.answer,
-          description: question.description,
-        },
-      });
-      await interaction.reply({
-        content: "✅ Question ajoutée au quiz avec succès.",
-        ephemeral: true,
-      });
+      addQuestionToQuiz(interaction);
     }
   }
   if (interaction.isChatInputCommand()) {

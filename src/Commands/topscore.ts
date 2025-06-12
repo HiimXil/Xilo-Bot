@@ -30,6 +30,7 @@ const command: Command = {
     }
     let topMessage = "";
     for (let i = 0; i < 5; i++) {
+      if (top[i] === undefined) break;
       topMessage += `**${i + 1}.** <@${top[i].discordId}> — ${
         top[i].score
       } pts \n`;
