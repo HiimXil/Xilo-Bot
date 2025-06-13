@@ -26,6 +26,7 @@ export type Configuration = {
   wordleCategoryId: string | null;
   wordleRoleId: string | null;
   wordleMessageId: string | null;
+  welcomeChannelId: string | null;
 };
 
 export type State = {

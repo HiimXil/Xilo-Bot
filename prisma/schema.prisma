@@ -59,6 +59,7 @@ model Configuration {
   wordleMessageId     String?
   freeGameChannelId   String?
   freeGameRoleId      String?
+  welcomeChannelId    String?
 }
 
 model State {

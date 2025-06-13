@@ -34,6 +34,7 @@ import select_quiz_role from "./Commands/select_quiz_role";
 import setup_wordle from "./Commands/setup_wordle";
 import setup_freegame from "./Commands/setup_freegame";
 import share_wordle from "./Commands/share_wordle";
+import select_welcome_channel from "./Commands/select_welcome_channel";
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 
 dotenv.config({ path: resolve(__dirname, "../.env") });
@@ -51,6 +52,7 @@ commandHandler.addCommand(select_quiz_role);
 commandHandler.addCommand(setup_wordle);
 commandHandler.addCommand(setup_freegame);
 commandHandler.addCommand(share_wordle);
+commandHandler.addCommand(select_welcome_channel);
 
 // Demarrage du bot
 client.once("ready", () => {
@@ -144,6 +146,19 @@ client.on("messageCreate", async (message) => {
       validAnswer(message, client);
     }
   }
+});
+
+client.on("guildMemberRemove", async (member) => {
+  const config: Configuration | null = await prisma.configuration.findUnique({
+    where: { guildId: member.guild.id },
+  });
+  if (!config || !config.welcomeChannelId) return;
+  const welcomeChannel = await member.guild.channels.cache.get(
+    config.welcomeChannelId
+  );
+  if (!welcomeChannel || !welcomeChannel.isTextBased()) return;
+  const welcomeMessage = `${member.user.username} c'est fait la malle !`;
+  await welcomeChannel.send(welcomeMessage);
 });
 
 client.login(process.env.DISCORD_TOKEN);
